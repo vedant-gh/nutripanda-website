@@ -83,13 +83,13 @@ export default function Footer() {
             </h3>
             <nav className="flex flex-col gap-3">
               <a
-                href="mailto:hello@nutripanda.in"
+                href="mailto:contact@nutripanda.in"
                 className="text-sm text-white/60 transition-colors hover:text-white"
               >
-                hello@nutripanda.in
+                contact@nutripanda.in
               </a>
               <span className="text-sm text-white/60">
-                Free shipping on orders above ₹499
+                Free shipping on all prepaid orders
               </span>
               <span className="text-sm text-white/60">
                 30-day satisfaction guarantee
@@ -104,7 +104,7 @@ export default function Footer() {
             </h3>
             <div className="flex items-center gap-3">
               <a
-                href="https://instagram.com/og_nutripanda"
+                href="https://instagram.com/nutripanda_og"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"
@@ -118,7 +118,7 @@ export default function Footer() {
               </a>
             </div>
             <p className="mt-4 text-sm text-white/60">
-              @og_nutripanda
+              @nutripanda_og
             </p>
           </div>
         </div>

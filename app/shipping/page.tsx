@@ -28,8 +28,8 @@ export default function ShippingPage() {
         <ul>
           <li><strong>Standard Delivery:</strong> 4–7 business days after dispatch (most pin codes).</li>
           <li><strong>Express Delivery:</strong> 2–3 business days (available at checkout for select pin codes).</li>
-          <li>Free standard shipping on all orders above ₹699.</li>
-          <li>Shipping charge of ₹69 for orders below ₹699.</li>
+          <li>Free standard shipping on all prepaid orders.</li>
+          <li>Cash on Delivery (COD) orders incur a flat ₹20 extra fee.</li>
         </ul>
       </section>
 

@@ -311,7 +311,7 @@ export default function CheckoutPage() {
               <div className="rounded-2xl border border-gray-200 bg-[#fafafa] p-5 sm:p-6">
                 <ul className="space-y-2.5 text-xs text-gray-600 sm:text-sm">
                   {[
-                    'Free shipping over ₹499',
+                    'Free shipping on prepaid orders',
                     '30-day satisfaction guarantee',
                     'Secure payment via Razorpay',
                   ].map((point) => (

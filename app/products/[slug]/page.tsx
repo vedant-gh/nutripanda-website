@@ -6,9 +6,10 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ProductHero from '@/components/product-detail/ProductHero'
 import TrackProductView from '@/components/product-detail/TrackProductView'
+import NutritionFactsAnnotated from '@/components/product-detail/NutritionFactsAnnotated'
 import { getProductBySlug, getAllProducts } from '@/lib/supabase/queries'
 import { formatPrice } from '@/lib/utils/format'
-import type { Product, Ingredient, NutritionFacts } from '@/types/supabase'
+import type { Product, Ingredient } from '@/types/supabase'
 
 // ── Color maps ──
 
@@ -105,45 +106,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 // ── Sub-sections ──
-
-function NutritionFactsPanel({ facts }: { facts: NutritionFacts }) {
-  return (
-    <div className="w-full max-w-sm rounded-2xl border-2 border-gray-900 bg-white p-5 sm:p-6">
-      <h3 className="border-b-8 border-gray-900 pb-1 text-2xl font-bold text-gray-900">
-        Nutrition Facts
-      </h3>
-      <p className="mt-2 text-sm text-gray-600">
-        Serving Size: {facts.servingSize}
-      </p>
-      <div className="mt-2 border-t-4 border-gray-900 pt-2">
-        <div className="flex items-baseline justify-between">
-          <span className="text-sm font-bold text-gray-900">Calories</span>
-          <span className="text-2xl font-bold text-gray-900">{facts.calories}</span>
-        </div>
-      </div>
-      <div className="mt-1 border-t-2 border-gray-900 pt-1 text-right text-xs font-bold text-gray-600">
-        % Daily Value*
-      </div>
-      {facts.fields.map((field, i) => (
-        <div
-          key={i}
-          className="flex items-center justify-between border-t border-gray-300 py-1.5 text-sm"
-        >
-          <span className="font-medium text-gray-900">{field.label}</span>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">{field.value}</span>
-            {field.dailyPercent && (
-              <span className="font-bold text-gray-900">{field.dailyPercent}</span>
-            )}
-          </div>
-        </div>
-      ))}
-      <p className="mt-3 border-t border-gray-300 pt-2 text-xs text-gray-500">
-        *Percent Daily Values are based on a 2,000 calorie diet.
-      </p>
-    </div>
-  )
-}
 
 function IngredientsSection({
   ingredients,
@@ -348,7 +310,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
             <h2 className="font-heading mb-8 text-3xl font-bold text-gray-900 sm:text-4xl">
               Nutrition Facts
             </h2>
-            <NutritionFactsPanel facts={product.nutrition_facts} />
+            <NutritionFactsAnnotated
+              facts={product.nutrition_facts}
+              colorTheme={product.color_theme}
+            />
           </div>
         </section>
       )}

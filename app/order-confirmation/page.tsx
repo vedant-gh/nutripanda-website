@@ -109,7 +109,7 @@ function OrderConfirmationContent() {
               Continue Shopping
             </Link>
             <a
-              href="mailto:hello@nutripanda.in"
+              href="mailto:contact@nutripanda.in"
               className="inline-flex items-center gap-2 rounded-full border-2 border-gray-900 px-8 py-3 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-900 hover:text-white active:scale-[0.98]"
             >
               <Mail size={16} />

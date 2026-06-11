@@ -155,19 +155,19 @@ export default function ContactSection() {
         {/* Alternative contact */}
         <div className="mt-8 flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-center sm:gap-6">
           <a
-            href="mailto:hello@nutripanda.in"
+            href="mailto:contact@nutripanda.in"
             className="text-sm text-gray-400 transition-colors hover:text-gray-900"
           >
-            hello@nutripanda.in
+            contact@nutripanda.in
           </a>
           <span className="hidden text-gray-300 sm:inline">|</span>
           <a
-            href="https://instagram.com/og_nutripanda"
+            href="https://instagram.com/nutripanda_og"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-gray-400 transition-colors hover:text-gray-900"
           >
-            @og_nutripanda
+            @nutripanda_og
           </a>
         </div>
       </div>

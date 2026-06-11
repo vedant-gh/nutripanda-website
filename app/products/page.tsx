@@ -70,7 +70,7 @@ function ComingSoonCard({ product }: { product: Product }) {
 }
 
 const TRUST_POINTS = [
-  { label: 'Free shipping over ₹499' },
+  { label: 'Free shipping on prepaid orders' },
   { label: '30-day satisfaction guarantee' },
   { label: 'Made in India · FSSAI Compliant' },
 ]

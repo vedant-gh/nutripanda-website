@@ -16,11 +16,11 @@ export default function GrievancePage() {
       <section>
         <h2>8.1 Customer Support</h2>
         <ul>
-          <li>Email: <a href="mailto:support@nutripanda.in">support@nutripanda.in</a></li>
+          <li>Email: <a href="mailto:contact@nutripanda.in">contact@nutripanda.in</a></li>
           <li>
             Instagram DM:{" "}
-            <a href="https://instagram.com/og_nutripanda" target="_blank" rel="noopener noreferrer">
-              @og_nutripanda
+            <a href="https://instagram.com/nutripanda_og" target="_blank" rel="noopener noreferrer">
+              @nutripanda_og
             </a>
           </li>
           <li>WhatsApp: To be updated</li>

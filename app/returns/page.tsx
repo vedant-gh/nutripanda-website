@@ -54,7 +54,7 @@ export default function ReturnsPage() {
           <li>
             <strong>Step 2 — Contact us within 48 hours of delivery:</strong> Email the video
             and your order number to{" "}
-            <a href="mailto:support@nutripanda.in">support@nutripanda.in</a> or WhatsApp us.
+            <a href="mailto:contact@nutripanda.in">contact@nutripanda.in</a> or WhatsApp us.
           </li>
           <li>
             <strong>Step 3 — We respond within 2 business days</strong> with next steps
@@ -77,7 +77,7 @@ export default function ReturnsPage() {
         <ul>
           <li>
             Orders can be cancelled within 12 hours of placement by emailing{" "}
-            <a href="mailto:support@nutripanda.in">support@nutripanda.in</a>.
+            <a href="mailto:contact@nutripanda.in">contact@nutripanda.in</a>.
           </li>
           <li>Once dispatched, cancellations are not possible. You will need to raise a return after delivery.</li>
           <li>Nutripanda reserves the right to cancel orders due to stock unavailability or payment verification issues, with full refund.</li>

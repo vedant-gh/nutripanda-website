@@ -90,11 +90,23 @@ export default function AboutPage() {
     <div className="min-h-screen bg-white">
       <Navbar />
       <main>
-        {/* Hero — split copy + mascot, matches homepage structure */}
+        {/* Hero — panda drops in from the top-left, copy sits at the bottom */}
         <section className="relative overflow-hidden bg-[#f7fdf6]">
-          <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 px-6 pt-12 pb-16 sm:px-8 sm:pt-16 sm:pb-20 lg:grid-cols-2 lg:gap-8 lg:px-12 lg:pt-20 lg:pb-24">
-            {/* Left: copy */}
-            <div className="text-center lg:text-left">
+          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-2 px-6 pb-16 sm:px-8 sm:pb-20 lg:grid-cols-2 lg:items-end lg:gap-8 lg:px-12 lg:pb-24">
+            {/* Left: panda — cut out, sticks flush to the top */}
+            <div className="flex justify-center lg:justify-start lg:self-start">
+              <Image
+                src="/assets/about-panda-cutout.png"
+                alt="NutriPanda mascot hanging upside down"
+                width={933}
+                height={712}
+                priority
+                className="h-auto w-full max-w-[300px] object-contain sm:max-w-[420px] lg:max-w-[600px]"
+              />
+            </div>
+
+            {/* Right: copy — padded from the top, sits toward the bottom */}
+            <div className="flex flex-col items-center justify-end pt-12 text-center sm:pt-16 lg:items-start lg:pb-10 lg:pt-32 lg:text-left">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#DCFDCC] px-4 py-1.5">
                 <span className="text-xs font-semibold tracking-wide text-gray-800">
                   Our story
@@ -126,18 +138,6 @@ export default function AboutPage() {
                   Read Story
                 </a>
               </div>
-            </div>
-
-            {/* Right: mascot */}
-            <div className="flex items-end justify-center lg:items-center">
-              <Image
-                src="/assets/hero.png"
-                alt="NutriPanda mascot"
-                width={700}
-                height={500}
-                priority
-                className="h-auto w-full max-w-[440px] object-contain lg:max-w-[560px]"
-              />
             </div>
           </div>
         </section>
@@ -361,7 +361,7 @@ export default function AboutPage() {
               Ready to try NutriPanda?
             </h2>
             <p className="mt-4 text-base text-gray-500 sm:text-lg">
-              Join thousands of Indians who&apos;ve made gummies part of their daily routine.
+              Join hundreds of Indians who&apos;ve made gummies part of their daily routine.
             </p>
             <Link
               href="/products"

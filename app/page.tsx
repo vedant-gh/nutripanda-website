@@ -79,12 +79,12 @@ export default async function Home() {
           <p className="mt-4 text-xs text-gray-400">
             Follow us{" "}
             <a
-              href="https://instagram.com/og_nutripanda"
+              href="https://instagram.com/nutripanda_og"
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand-green hover:underline"
             >
-              @og_nutripanda
+              @nutripanda_og
             </a>
           </p>
 

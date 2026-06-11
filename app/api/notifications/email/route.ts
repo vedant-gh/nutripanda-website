@@ -66,7 +66,7 @@ function buildOrderConfirmationHtml(order: Order): string {
     </div>
     <div style="background:#333;padding:16px;text-align:center;">
       <p style="color:#999;margin:0;font-size:12px;">NutriPanda · Nutrition that's fun</p>
-      <p style="color:#999;margin:4px 0 0;font-size:12px;">@og_nutripanda</p>
+      <p style="color:#999;margin:4px 0 0;font-size:12px;">@nutripanda_og</p>
     </div>
   </div>
 </body>

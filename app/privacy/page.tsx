@@ -79,7 +79,7 @@ export default function PrivacyPage() {
         </ul>
         <p>
           To exercise any of these rights, email us at{" "}
-          <a href="mailto:support@nutripanda.in">support@nutripanda.in</a> with the subject
+          <a href="mailto:contact@nutripanda.in">contact@nutripanda.in</a> with the subject
           line &ldquo;Data Request&rdquo;.
         </p>
       </section>

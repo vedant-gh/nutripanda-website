@@ -21,7 +21,7 @@ const faqs = [
   {
     question: "Do you offer international shipping?",
     answer:
-      "We currently ship across India with free delivery on orders above ₹499. International shipping is not available at the moment, but we are actively working on expanding to select countries. Sign up for our newsletter to be the first to know when we launch internationally.",
+      "We currently ship across India with free delivery on all prepaid orders. International shipping is not available at the moment, but we are actively working on expanding to select countries. Sign up for our newsletter to be the first to know when we launch internationally.",
   },
   {
     question: "What is your return policy?",

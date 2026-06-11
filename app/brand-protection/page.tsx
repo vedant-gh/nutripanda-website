@@ -27,7 +27,7 @@ export default function BrandProtectionPage() {
       <section>
         <h2>6.2 User-Generated Content</h2>
         <p>
-          By tagging @og_nutripanda or using #Nutripanda in social media posts, you grant
+          By tagging @nutripanda_og or using #Nutripanda in social media posts, you grant
           Nutripanda Life Care a non-exclusive, royalty-free licence to repost and feature
           your content for marketing purposes, with attribution. You can withdraw this licence
           at any time by DM.
