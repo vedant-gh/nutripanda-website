@@ -248,8 +248,9 @@ function ProductJsonLd({ product }: { product: Product }) {
       '@type': 'Offer',
       price: (product.price / 100).toFixed(2),
       priceCurrency: 'INR',
-      availability:
-        product.inventory_count > 0
+      availability: product.is_coming_soon
+        ? 'https://schema.org/PreOrder'
+        : product.inventory_count > 0
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
       seller: {

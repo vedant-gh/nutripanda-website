@@ -32,6 +32,7 @@ export default function ProductCards({ products }: { products: Product[] }) {
             const hasDiscount =
               product.compare_at_price &&
               product.compare_at_price > product.price;
+            const isComingSoon = product.is_coming_soon;
 
             return (
               <Link
@@ -41,7 +42,11 @@ export default function ProductCards({ products }: { products: Product[] }) {
               >
                 {/* Image card */}
                 <div className="relative aspect-[4/5] w-full overflow-hidden">
-                  {hasDiscount && (
+                  {isComingSoon ? (
+                    <span className="absolute left-3 top-3 z-10 rounded-full bg-gray-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-white sm:text-xs">
+                      Coming Soon
+                    </span>
+                  ) : hasDiscount ? (
                     <span className="absolute left-3 top-3 z-10 rounded-full bg-gray-900 px-3 py-1 text-[10px] font-semibold tracking-wide text-white sm:text-xs">
                       {Math.round(
                         ((product.compare_at_price! - product.price) /
@@ -50,7 +55,7 @@ export default function ProductCards({ products }: { products: Product[] }) {
                       )}
                       % OFF
                     </span>
-                  )}
+                  ) : null}
                   <Image
                     src={image}
                     alt={product.name}
@@ -59,7 +64,7 @@ export default function ProductCards({ products }: { products: Product[] }) {
                     sizes="(max-width: 640px) 50vw, 320px"
                   />
                   {/* Quick-add — corner button (fades in on hover, always shown on mobile) */}
-                  {product.inventory_count > 0 && (
+                  {!isComingSoon && product.inventory_count > 0 && (
                     <div
                       className="absolute bottom-3 right-3 z-10"
                       onClick={(e) => e.preventDefault()}
@@ -91,16 +96,22 @@ export default function ProductCards({ products }: { products: Product[] }) {
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-900 sm:text-sm">
                     {product.name}
                   </h3>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-sm font-medium text-gray-900 sm:text-base">
-                      {formatPrice(product.price)}
-                    </span>
-                    {hasDiscount && (
-                      <span className="text-xs text-gray-400 line-through">
-                        {formatPrice(product.compare_at_price!)}
+                  {isComingSoon ? (
+                    <p className="mt-1 text-sm font-medium text-gray-400">
+                      Coming Soon
+                    </p>
+                  ) : (
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="text-sm font-medium text-gray-900 sm:text-base">
+                        {formatPrice(product.price)}
                       </span>
-                    )}
-                  </div>
+                      {hasDiscount && (
+                        <span className="text-xs text-gray-400 line-through">
+                          {formatPrice(product.compare_at_price!)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Link>
             );

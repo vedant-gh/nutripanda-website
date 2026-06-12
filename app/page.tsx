@@ -7,15 +7,27 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 import FAQSection from "@/components/FAQSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
-import { getFeaturedProducts, getAllTestimonials } from "@/lib/supabase/queries";
+import {
+  getFeaturedProducts,
+  getComingSoonProducts,
+  getAllTestimonials,
+} from "@/lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [products, testimonials] = await Promise.all([
+  const [featured, comingSoon, testimonials] = await Promise.all([
     getFeaturedProducts(),
+    getComingSoonProducts(),
     getAllTestimonials(),
   ]);
+
+  // Best Sellers = live featured products, followed by coming-soon teasers
+  const featuredIds = new Set(featured.map((p) => p.id));
+  const products = [
+    ...featured,
+    ...comingSoon.filter((p) => !featuredIds.has(p.id)),
+  ];
 
   return (
     <div className="min-h-screen bg-white font-sans">

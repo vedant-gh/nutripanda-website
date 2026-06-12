@@ -28,7 +28,10 @@ function ComingSoonCard({ product }: { product: Product }) {
   const dot = PRODUCT_DOT[product.color_theme ?? ''] ?? 'bg-brand-green'
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-[#f3f3f3] pb-5">
+    <Link
+      href={`/products/${product.slug}`}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-[#f3f3f3] pb-5 transition-shadow hover:shadow-md"
+    >
       <div
         className={`relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-gradient-to-br ${tint}`}
       >
@@ -65,7 +68,7 @@ function ComingSoonCard({ product }: { product: Product }) {
           </p>
         )}
       </div>
-    </div>
+    </Link>
   )
 }
 

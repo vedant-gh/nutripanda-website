@@ -28,7 +28,8 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     .from('products')
     .select('*')
     .eq('slug', slug)
-    .eq('is_active', true)
+    // Active products OR coming-soon teasers both get a page
+    .or('is_active.eq.true,is_coming_soon.eq.true')
     .single()
   if (error && error.code !== 'PGRST116') throw error
   return (data as Product) ?? null

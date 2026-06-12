@@ -48,6 +48,7 @@ export default function ProductHero({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1)
   const { addItem, openCart } = useCartStore()
 
+  const isComingSoon = product.is_coming_soon
   const outOfStock = product.inventory_count <= 0
   const tint = TINT_MAP[product.color_theme ?? ''] ?? 'from-gray-50 via-white to-gray-50/40'
   const accentBg = ACCENT_BG[product.color_theme ?? ''] ?? 'bg-brand-green'
@@ -92,7 +93,12 @@ export default function ProductHero({ product }: { product: Product }) {
                 </div>
               )}
               <div className="absolute left-4 top-4 flex flex-col items-start gap-1.5">
-                {hasDiscount && (
+                {isComingSoon && (
+                  <span className={`rounded-full ${accentBg} px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white`}>
+                    Coming Soon
+                  </span>
+                )}
+                {!isComingSoon && hasDiscount && (
                   <span className="rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold tracking-wide text-white">
                     {Math.round(
                       ((product.compare_at_price! - product.price) /
@@ -102,7 +108,7 @@ export default function ProductHero({ product }: { product: Product }) {
                     % OFF
                   </span>
                 )}
-                {outOfStock && (
+                {!isComingSoon && outOfStock && (
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold tracking-wide text-gray-900 ring-1 ring-gray-200">
                     Out of stock
                   </span>
@@ -135,9 +141,14 @@ export default function ProductHero({ product }: { product: Product }) {
 
           {/* Product info */}
           <div className="flex flex-col justify-center">
-            {/* Made in India tag */}
-            <div className="mb-4 inline-flex w-max items-center gap-2 rounded-full bg-[#DCFDCC] px-3 py-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-800">
+            {/* Tags */}
+            <div className="mb-4 flex w-max items-center gap-2">
+              {isComingSoon && (
+                <span className={`inline-flex items-center rounded-full ${accentBg} px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white`}>
+                  Coming Soon
+                </span>
+              )}
+              <span className="inline-flex items-center rounded-full bg-[#DCFDCC] px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-800">
                 Made in India
               </span>
             </div>
@@ -146,21 +157,23 @@ export default function ProductHero({ product }: { product: Product }) {
               {product.name}
             </h1>
 
-            <div className="mt-4 flex items-baseline gap-3">
-              <span className="text-2xl font-bold text-gray-900 sm:text-3xl">
-                {formatPrice(product.price)}
-              </span>
-              {hasDiscount && (
-                <span className="text-base text-gray-400 line-through sm:text-lg">
-                  {formatPrice(product.compare_at_price!)}
+            {product.price > 0 && (
+              <div className="mt-4 flex items-baseline gap-3">
+                <span className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                  {formatPrice(product.price)}
                 </span>
-              )}
-              {hasDiscount && (
-                <span className="rounded-full bg-[#DCFDCC] px-2.5 py-0.5 text-xs font-semibold text-gray-800">
-                  Save {formatPrice(product.compare_at_price! - product.price)}
-                </span>
-              )}
-            </div>
+                {hasDiscount && (
+                  <span className="text-base text-gray-400 line-through sm:text-lg">
+                    {formatPrice(product.compare_at_price!)}
+                  </span>
+                )}
+                {!isComingSoon && hasDiscount && (
+                  <span className="rounded-full bg-[#DCFDCC] px-2.5 py-0.5 text-xs font-semibold text-gray-800">
+                    Save {formatPrice(product.compare_at_price! - product.price)}
+                  </span>
+                )}
+              </div>
+            )}
 
             {product.short_description && (
               <p className="mt-5 text-base leading-relaxed text-gray-500 sm:text-lg">
@@ -184,7 +197,22 @@ export default function ProductHero({ product }: { product: Product }) {
               ))}
             </div>
 
-            {/* Quantity selector + Add to Cart */}
+            {/* Coming soon — no purchase yet */}
+            {isComingSoon ? (
+              <div className="mt-8 border-t border-gray-200 pt-6">
+                <button
+                  type="button"
+                  disabled
+                  className="w-full cursor-not-allowed rounded-full bg-gray-900 px-8 py-3.5 text-sm font-semibold text-white opacity-90 sm:text-base"
+                >
+                  Coming Soon
+                </button>
+                <p className="mt-3 text-sm text-gray-500">
+                  This flavour is launching soon — check back shortly to order it here.
+                </p>
+              </div>
+            ) : (
+            /* Quantity selector + Add to Cart */
             <div className="mt-8 border-t border-gray-200 pt-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2">
@@ -229,6 +257,7 @@ export default function ProductHero({ product }: { product: Product }) {
                 </p>
               )}
             </div>
+            )}
           </div>
         </div>
       </div>
