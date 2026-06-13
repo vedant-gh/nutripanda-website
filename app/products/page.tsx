@@ -5,6 +5,9 @@ import ProductCard from '@/components/products/ProductCard'
 import { getAllProducts, getComingSoonProducts } from '@/lib/supabase/queries'
 import type { Product } from '@/types/supabase'
 
+// Always render from the live database so product/status changes show immediately.
+export const dynamic = 'force-dynamic'
+
 const PRODUCT_TINT: Record<string, string> = {
   orange: 'from-orange-50 to-orange-100/40',
   green: 'from-green-50 to-green-100/40',
@@ -167,7 +170,9 @@ export default async function ProductsPage() {
                 On the way
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Six more flavours dropping soon. Be the first to know.
+                {comingSoon.length === 1
+                  ? 'A new flavour is dropping soon. Be the first to know.'
+                  : `${comingSoon.length} new flavours dropping soon. Be the first to know.`}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-5 sm:gap-7 lg:grid-cols-3">

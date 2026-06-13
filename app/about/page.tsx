@@ -7,7 +7,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'About Us | NutriPanda',
   description:
-    'Learn about NutriPanda — our story, mission, and commitment to making nutrition fun, clean, and accessible for every Indian.',
+    'Learn about NutriPanda, our story, mission, and commitment to making nutrition fun, clean, and accessible for every Indian.',
 }
 
 const VALUES = [
@@ -27,7 +27,7 @@ const VALUES = [
     number: '02',
     title: '100% Vegan',
     description:
-      'Every gummy uses pectin — a plant-based alternative to gelatin. Suitable for vegetarians, vegans, and your conscience.',
+      'Every gummy uses pectin, a plant-based alternative to gelatin. Suitable for vegetarians, vegans, and your conscience.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
         <path d="M17 8c.7-1 1-2.2 1-3.5C18 2 16 0 16 0s-2 2-2 4.5c0 1.3.3 2.5 1 3.5" />
@@ -120,7 +120,7 @@ export default function AboutPage() {
               </h1>
 
               <p className="mt-5 max-w-xl text-base leading-relaxed text-gray-500 sm:text-lg lg:max-w-md">
-                NutriPanda started with a simple frustration — why does something so
+                NutriPanda started with a simple frustration. Why does something so
                 essential have to taste so bad? So we built the gummies we wished existed.
               </p>
 
@@ -245,7 +245,7 @@ export default function AboutPage() {
                 <p className="text-base leading-relaxed text-white/70 sm:text-lg">
                   To make daily nutrition accessible, enjoyable, and transparent for every
                   Indian. We believe that when supplements taste great and are made with
-                  clean ingredients, people stay consistent — and consistency is where real
+                  clean ingredients, people stay consistent, and consistency is where real
                   health happens.
                 </p>
               </div>
@@ -264,7 +264,7 @@ export default function AboutPage() {
                 </div>
                 <p className="text-base leading-relaxed text-white/70 sm:text-lg">
                   A world where taking your vitamins brings a smile, not a grimace.
-                  India&apos;s most loved nutrition brand — one gummy at a time.
+                  India&apos;s most loved nutrition brand, one gummy at a time.
                 </p>
               </div>
             </div>

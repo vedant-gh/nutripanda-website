@@ -208,7 +208,7 @@ export default function ProductHero({ product }: { product: Product }) {
                   Coming Soon
                 </button>
                 <p className="mt-3 text-sm text-gray-500">
-                  This flavour is launching soon — check back shortly to order it here.
+                  This flavour is launching soon. Check back shortly to order it here.
                 </p>
               </div>
             ) : (

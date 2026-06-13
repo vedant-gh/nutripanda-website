@@ -31,7 +31,7 @@ const faqs = [
   {
     question: "How many gummies should I take per day?",
     answer:
-      "We recommend 2 gummies per day for adults. Take them at any time — with or without food. For best results, make them part of your daily routine. Do not exceed the recommended dosage. Consult your physician if you are pregnant, nursing, or on medication.",
+      "We recommend 2 gummies per day for adults. Take them at any time, with or without food. For best results, make them part of your daily routine. Do not exceed the recommended dosage. Consult your physician if you are pregnant, nursing, or on medication.",
   },
 ];
 

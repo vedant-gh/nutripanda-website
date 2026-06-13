@@ -62,7 +62,7 @@ export default function BrandSection() {
           <p className="mt-5 text-base leading-relaxed text-gray-500 sm:text-lg">
             We started NutriPanda because we were tired of supplements that tasted bad,
             had sketchy ingredients, or made promises they couldn&apos;t keep.
-            Our gummies are made with real, clean ingredients — crafted in India, for India.
+            Our gummies are made with real, clean ingredients, crafted in India, for India.
           </p>
         </div>
 

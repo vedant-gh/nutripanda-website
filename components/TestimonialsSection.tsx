@@ -35,7 +35,7 @@ const FALLBACK_TESTIMONIALS: Testimonial[] = [
     id: "f4",
     customer_name: "Vikram Singh",
     customer_location: "Delhi, NCR",
-    text: "As someone who struggles to swallow pills, NutriPanda is a game-changer. The taste is genuinely good — not that fake sweet flavour you get with other brands. Highly recommend the Immunity ones.",
+    text: "As someone who struggles to swallow pills, NutriPanda is a game-changer. The taste is genuinely good, not that fake sweet flavour you get with other brands. Highly recommend the Immunity ones.",
     rating: 5,
     is_active: true,
     created_at: "",

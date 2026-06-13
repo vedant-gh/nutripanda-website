@@ -11,6 +11,9 @@ import { getProductBySlug, getAllProducts } from '@/lib/supabase/queries'
 import { formatPrice } from '@/lib/utils/format'
 import type { Product, Ingredient } from '@/types/supabase'
 
+// Always render from the live database so product/status changes show immediately.
+export const dynamic = 'force-dynamic'
+
 // ── Color maps ──
 
 const BG_MAP: Record<string, string> = {
@@ -95,7 +98,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!product) return { title: 'Product Not Found' }
 
   return {
-    title: product.seo_title ?? `${product.name} — NutriPanda`,
+    title: product.seo_title ?? `${product.name} | NutriPanda`,
     description: product.seo_description ?? product.short_description ?? product.description ?? undefined,
     openGraph: {
       title: product.seo_title ?? product.name,
