@@ -1,6 +1,7 @@
 "use client";
 
 import { Toaster } from "react-hot-toast";
+import AnnouncementBar from "@/components/AnnouncementBar";
 import CartDrawer from "@/components/CartDrawer";
 import CouponPopup from "@/components/CouponPopup";
 import PostHogProvider from "@/lib/posthog/provider";
@@ -8,6 +9,7 @@ import PostHogProvider from "@/lib/posthog/provider";
 export default function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <PostHogProvider>
+      <AnnouncementBar />
       {children}
       <CartDrawer />
       <CouponPopup />

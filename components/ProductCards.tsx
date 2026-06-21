@@ -60,7 +60,7 @@ export default function ProductCards({ products }: { products: Product[] }) {
                     src={image}
                     alt={product.name}
                     fill
-                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                    className="object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.05] sm:p-4"
                     sizes="(max-width: 640px) 50vw, 320px"
                   />
                   {/* Quick-add — corner button (fades in on hover, always shown on mobile) */}

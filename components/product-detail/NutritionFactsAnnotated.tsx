@@ -141,6 +141,11 @@ export default function NutritionFactsAnnotated({
             Nutrition Facts
           </h3>
           <p className="mt-2 text-sm text-gray-600">Serving Size: {facts.servingSize}</p>
+          {facts.servingsPerContainer != null && (
+            <p className="mt-0.5 text-sm text-gray-600">
+              Servings Per Container: {facts.servingsPerContainer}
+            </p>
+          )}
           <div className="mt-2 border-t-4 border-gray-900 pt-2">
             <div className="flex items-baseline justify-between">
               <span className="text-sm font-bold text-gray-900">Calories</span>

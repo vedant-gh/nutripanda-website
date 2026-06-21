@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { findPublicCoupon, computePublicCouponDiscount } from '@/lib/utils/coupons'
 
 export async function POST(request: Request) {
   try {
@@ -21,6 +22,21 @@ export async function POST(request: Request) {
       )
     }
 
+    // 1. Public sitewide coupons (e.g. PANDA150)
+    const publicCoupon = findPublicCoupon(code)
+    if (publicCoupon) {
+      const result = computePublicCouponDiscount(publicCoupon, subtotal)
+      if (!result.ok) {
+        return NextResponse.json({ valid: false, error: result.error })
+      }
+      return NextResponse.json({
+        valid: true,
+        discount: result.discount,
+        code: publicCoupon.code,
+      })
+    }
+
+    // 2. Single-use lead coupons (percent-based)
     const supabase = getSupabaseAdmin()
 
     const { data: coupon, error } = await supabase

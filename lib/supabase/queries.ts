@@ -116,6 +116,25 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) throw error
 }
 
+// Permanently remove a product row. Existing orders are unaffected because
+// their line items are stored as a JSON snapshot, not a foreign key. We do
+// clear inventory_log rows first, since they reference product_id.
+export async function hardDeleteProduct(id: string): Promise<void> {
+  const admin = getSupabaseAdmin()
+
+  const { error: logError } = await admin
+    .from('inventory_log')
+    .delete()
+    .eq('product_id', id)
+  if (logError) throw logError
+
+  const { error } = await admin
+    .from('products')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function getAllProductsAdmin(): Promise<Product[]> {
   const { data, error } = await getSupabaseAdmin()
     .from('products')
@@ -147,6 +166,8 @@ interface CreateOrderInput {
   subtotal: number
   shipping_cost: number
   discount?: number
+  cod_fee?: number
+  payment_method?: 'prepaid' | 'cod'
   total_amount: number
   razorpay_order_id?: string
 }
@@ -157,6 +178,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     .insert({
       ...input,
       discount: input.discount ?? 0,
+      cod_fee: input.cod_fee ?? 0,
+      payment_method: input.payment_method ?? 'prepaid',
       payment_status: 'pending',
       order_status: 'confirmed',
     })

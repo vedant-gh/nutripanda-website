@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import Image from 'next/image'
 import { useCartStore } from '@/lib/cart/store'
 import { formatPrice } from '@/lib/utils/format'
@@ -46,6 +46,7 @@ export default function ProductHero({ product }: { product: Product }) {
   const images = product.images?.length ? product.images : []
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number } | null>(null)
   const { addItem, openCart } = useCartStore()
 
   const isComingSoon = product.is_coming_soon
@@ -58,11 +59,33 @@ export default function ProductHero({ product }: { product: Product }) {
   const hasDiscount =
     product.compare_at_price && product.compare_at_price > product.price
 
+  // Pack size: gummies per pack = gummies per serving × servings per container.
+  const servingsPerContainer = product.nutrition_facts?.servingsPerContainer
+  const perServing = parseInt(product.nutrition_facts?.servingSize ?? '', 10)
+  const gummiesPerPack =
+    servingsPerContainer && perServing ? servingsPerContainer * perServing : null
+
   function handleAddToCart() {
     if (outOfStock) return
     addItem(product, quantity)
     openCart()
     toast.success(`${product.name} added to cart`)
+  }
+
+  // Track cursor as % of the frame so we can zoom into that point on hover.
+  function handleZoomMove(e: MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setZoomOrigin({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100,
+    })
+  }
+
+  // Step through the gallery with the prev/next arrows (wraps around).
+  function goToImage(delta: number) {
+    if (images.length <= 1) return
+    setZoomOrigin(null)
+    setSelectedImage((i) => (i + delta + images.length) % images.length)
   }
 
   return (
@@ -71,13 +94,25 @@ export default function ProductHero({ product }: { product: Product }) {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
           {/* Image gallery */}
           <div>
-            <div className="relative aspect-square overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <div
+              className={`relative aspect-square overflow-hidden rounded-2xl border border-gray-200 bg-white ${
+                hasImage ? 'cursor-zoom-in' : ''
+              }`}
+              onMouseMove={hasImage ? handleZoomMove : undefined}
+              onMouseLeave={() => setZoomOrigin(null)}
+            >
               {hasImage ? (
                 <Image
                   src={url!}
                   alt={product.name}
                   fill
-                  className="object-cover"
+                  className="object-contain p-6 transition-transform duration-200 ease-out"
+                  style={{
+                    transform: zoomOrigin ? 'scale(2.2)' : 'scale(1)',
+                    transformOrigin: zoomOrigin
+                      ? `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                      : 'center',
+                  }}
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   priority
                 />
@@ -114,6 +149,36 @@ export default function ProductHero({ product }: { product: Product }) {
                   </span>
                 )}
               </div>
+
+              {hasImage && images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => goToImage(-1)}
+                    onMouseMove={(e) => e.stopPropagation()}
+                    aria-label="Previous image"
+                    className="absolute left-2 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50 sm:left-3"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goToImage(1)}
+                    onMouseMove={(e) => e.stopPropagation()}
+                    aria-label="Next image"
+                    className="absolute right-2 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50 sm:right-3"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                  <span className="absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full bg-gray-900/70 px-2.5 py-0.5 text-[11px] font-medium text-white sm:bottom-3">
+                    {selectedImage + 1} / {images.length}
+                  </span>
+                </>
+              )}
             </div>
             {images.length > 1 && (
               <div className="mt-3 flex gap-2 overflow-x-auto">
@@ -130,7 +195,7 @@ export default function ProductHero({ product }: { product: Product }) {
                       src={img}
                       alt={`${product.name} ${i + 1}`}
                       fill
-                      className="object-cover"
+                      className="bg-white object-contain p-1"
                       sizes="64px"
                     />
                   </button>
@@ -173,6 +238,27 @@ export default function ProductHero({ product }: { product: Product }) {
                   </span>
                 )}
               </div>
+            )}
+
+            {gummiesPerPack && (
+              <p className="mt-4 inline-flex w-max items-center gap-2 text-sm font-medium text-gray-600">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="h-4 w-4 shrink-0"
+                  stroke="#12BC00"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
+                  <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9" />
+                  <path d="M12 3v6" />
+                </svg>
+                {gummiesPerPack} gummies per pack
+                {servingsPerContainer ? ` · ${servingsPerContainer} servings` : ''}
+              </p>
             )}
 
             {product.short_description && (

@@ -147,12 +147,12 @@ export default function HeroSection() {
         >
           <div className="relative">
             <Image
-              src="/assets/hero.png"
-              alt="NutriPanda mascot holding gummy bears"
-              width={700}
-              height={500}
+              src="/assets/hero-skin.png"
+              alt="NutriPanda panda mascot holding a Skin Gummies pack"
+              width={1178}
+              height={1335}
               priority
-              className="relative z-10 h-auto w-full max-w-[500px] object-contain lg:max-w-[600px]"
+              className="relative z-10 h-auto w-full max-w-[400px] object-contain lg:max-w-[480px]"
             />
           </div>
         </div>

@@ -8,10 +8,11 @@ interface OrderSummaryProps {
   subtotal: number
   discount?: number
   couponCode?: string
+  codFee?: number
 }
 
-export default function OrderSummary({ items, subtotal, discount = 0, couponCode }: OrderSummaryProps) {
-  const total = subtotal + SHIPPING_COST - discount
+export default function OrderSummary({ items, subtotal, discount = 0, couponCode, codFee = 0 }: OrderSummaryProps) {
+  const total = subtotal + SHIPPING_COST + codFee - discount
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 sm:p-6">
@@ -26,7 +27,7 @@ export default function OrderSummary({ items, subtotal, discount = 0, couponCode
                   src={item.image}
                   alt={item.name}
                   fill
-                  className="object-cover"
+                  className="object-contain p-1"
                   sizes="56px"
                 />
               ) : (
@@ -65,6 +66,12 @@ export default function OrderSummary({ items, subtotal, discount = 0, couponCode
             <span className="font-medium text-brand-green">
               -{formatPrice(discount)}
             </span>
+          </div>
+        )}
+        {codFee > 0 && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-500">COD fee</span>
+            <span className="font-medium text-gray-900">{formatPrice(codFee)}</span>
           </div>
         )}
         <div className="flex items-center justify-between border-t border-gray-200 pt-3 mt-3">

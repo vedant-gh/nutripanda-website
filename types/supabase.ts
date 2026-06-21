@@ -31,6 +31,7 @@ export interface Ingredient {
 
 export interface NutritionFacts {
   servingSize: string
+  servingsPerContainer?: number
   calories: number
   fields: NutritionField[]
 }
@@ -73,7 +74,9 @@ export interface Order {
   subtotal: number
   shipping_cost: number
   discount: number
+  cod_fee: number
   total_amount: number
+  payment_method: 'prepaid' | 'cod'
   payment_status: 'pending' | 'paid' | 'failed' | 'refunded'
   order_status: 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
   razorpay_order_id: string | null

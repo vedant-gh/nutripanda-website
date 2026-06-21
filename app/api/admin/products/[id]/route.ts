@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/utils/admin-auth'
 import { handleCors, withCors } from '@/lib/utils/api-helpers'
-import { getProductById, updateProduct, deleteProduct } from '@/lib/supabase/queries'
+import { getProductById, updateProduct, deleteProduct, hardDeleteProduct } from '@/lib/supabase/queries'
 
 export async function OPTIONS(request: Request) {
   return handleCors(request)
@@ -67,7 +67,7 @@ export async function PUT(
   }
 }
 
-// DELETE — soft delete
+// DELETE — soft delete by default; ?permanent=true removes the row entirely
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -81,8 +81,15 @@ export async function DELETE(
 
   try {
     const { id } = await params
-    await deleteProduct(id)
-    return withCors(NextResponse.json({ success: true }), request)
+    const permanent = new URL(request.url).searchParams.get('permanent') === 'true'
+
+    if (permanent) {
+      await hardDeleteProduct(id)
+    } else {
+      await deleteProduct(id)
+    }
+
+    return withCors(NextResponse.json({ success: true, permanent }), request)
   } catch (err) {
     console.error('Admin delete product error:', err)
     return withCors(

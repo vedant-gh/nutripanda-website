@@ -341,14 +341,38 @@ export default function AboutPage() {
                 </ul>
               </div>
 
-              <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 via-white to-green-50/40">
-                <Image
-                  src="/assets/hero.png"
-                  alt="NutriPanda mascot with gummies"
-                  fill
-                  className="object-contain p-6"
-                  sizes="(max-width: 768px) 100vw, 480px"
-                />
+              <div className="relative aspect-[4/5]">
+                {/* Top-left gummy */}
+                <div
+                  className="absolute left-[8%] top-[12%] h-[35%] w-[40%]"
+                  style={{ animation: 'float 6s ease-in-out infinite' }}
+                >
+                  <div className="relative h-full w-full" style={{ transform: 'rotate(-9deg)' }}>
+                    <Image
+                      src="/assets/gummy-green.png"
+                      alt="Green NutriPanda gummy"
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 768px) 40vw, 200px"
+                    />
+                  </div>
+                </div>
+                {/* Bottom-right gummy, lifted a bit */}
+                <div
+                  className="absolute bottom-[18%] right-[8%] h-[35%] w-[40%]"
+                  style={{ animation: 'float 7.5s ease-in-out infinite', animationDelay: '1.4s' }}
+                  aria-hidden
+                >
+                  <div className="relative h-full w-full" style={{ transform: 'rotate(11deg)' }}>
+                    <Image
+                      src="/assets/gummy-green.png"
+                      alt=""
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 768px) 40vw, 200px"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

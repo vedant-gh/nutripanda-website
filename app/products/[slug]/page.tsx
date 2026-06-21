@@ -6,7 +6,6 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ProductHero from '@/components/product-detail/ProductHero'
 import TrackProductView from '@/components/product-detail/TrackProductView'
-import NutritionFactsAnnotated from '@/components/product-detail/NutritionFactsAnnotated'
 import { getProductBySlug, getAllProducts } from '@/lib/supabase/queries'
 import { formatPrice } from '@/lib/utils/format'
 import type { Product, Ingredient } from '@/types/supabase'
@@ -169,19 +168,9 @@ function TrustBadgesRow({
   )
 }
 
-const TINT_MAP: Record<string, string> = {
-  orange: 'from-orange-50 to-orange-100/40',
-  green: 'from-green-50 to-green-100/40',
-  purple: 'from-purple-50 to-purple-100/40',
-  yellow: 'from-yellow-50 to-yellow-100/40',
-  pink: 'from-pink-50 to-pink-100/40',
-  blue: 'from-blue-50 to-blue-100/40',
-}
-
 function RelatedProductCard({ product }: { product: Product }) {
   const url = product.images?.[0]
   const hasImage = !!url && !url.includes('placehold.co')
-  const tint = TINT_MAP[product.color_theme ?? ''] ?? 'from-gray-50 to-gray-100/40'
   const dot = BG_MAP[product.color_theme ?? ''] ?? 'bg-brand-green'
 
   return (
@@ -189,13 +178,13 @@ function RelatedProductCard({ product }: { product: Product }) {
       href={`/products/${product.slug}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-[#f3f3f3] pb-5 transition-shadow hover:shadow-md"
     >
-      <div className={`relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br ${tint}`}>
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-white">
         {hasImage ? (
           <Image
             src={url!}
             alt={product.name}
             fill
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+            className="object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.05] sm:p-4"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
@@ -306,21 +295,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
       {/* Hero: image + info + add to cart */}
       <ProductHero product={product} />
-
-      {/* Nutrition Facts */}
-      {product.nutrition_facts && (
-        <section className="bg-white py-12 sm:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 className="font-heading mb-8 text-3xl font-bold text-gray-900 sm:text-4xl">
-              Nutrition Facts
-            </h2>
-            <NutritionFactsAnnotated
-              facts={product.nutrition_facts}
-              colorTheme={product.color_theme}
-            />
-          </div>
-        </section>
-      )}
 
       {/* Ingredients */}
       {product.ingredients && product.ingredients.length > 0 && (

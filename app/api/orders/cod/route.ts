@@ -1,21 +1,18 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { getRazorpayInstance } from '@/lib/razorpay/utils'
-import { createOrder } from '@/lib/supabase/queries'
+import { createOrder, logInventoryChange } from '@/lib/supabase/queries'
 import { validateEmail, validatePhone, validatePincode } from '@/lib/utils/validators'
-import { SHIPPING_COST } from '@/lib/utils/constants'
+import { SHIPPING_COST, COD_FEE } from '@/lib/utils/constants'
 import { findPublicCoupon, computePublicCouponDiscount } from '@/lib/utils/coupons'
 import type { OrderItem, ShippingAddress } from '@/types/supabase'
 
+// Cash-on-delivery order placement. No payment gateway — the order is created as
+// confirmed/pending-payment, stock is decremented immediately, and the COD_FEE
+// is added to the total.
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const {
-      customer,
-      shippingAddress,
-      items,
-      couponCode,
-    } = body as {
+    const { customer, shippingAddress, items, couponCode } = body as {
       customer: { name: string; email: string; phone: string; whatsappOptIn?: boolean }
       shippingAddress: ShippingAddress
       items: OrderItem[]
@@ -32,19 +29,22 @@ export async function POST(request: Request) {
     if (!validatePhone(customer.phone)) {
       return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
     }
-    if (!shippingAddress?.line1 || !shippingAddress.city || !shippingAddress.state || !validatePincode(shippingAddress.pincode)) {
+    if (
+      !shippingAddress?.line1 ||
+      !shippingAddress.city ||
+      !shippingAddress.state ||
+      !validatePincode(shippingAddress.pincode)
+    ) {
       return NextResponse.json({ error: 'Invalid shipping address' }, { status: 400 })
     }
     if (!items?.length) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
     }
 
-    // Map to internal field names
     const customer_name = customer.name.trim()
     const customer_email = customer.email.trim().toLowerCase()
     const customer_phone = customer.phone.trim()
     const customer_whatsapp_opted_in = customer.whatsappOptIn ?? false
-    const shipping_address = shippingAddress
     const coupon_code = couponCode
 
     // ── Verify prices & stock against DB ──
@@ -81,20 +81,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Calculate totals ──
+    // ── Calculate totals (re-validate coupon server-side) ──
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
     let discount = 0
     let isLeadCoupon = false
 
     if (coupon_code) {
-      // Public sitewide coupon (e.g. PANDA150) — re-validated here so the
-      // charged amount is never trusted from the client.
       const publicCoupon = findPublicCoupon(coupon_code)
       if (publicCoupon) {
         const result = computePublicCouponDiscount(publicCoupon, subtotal)
         if (result.ok) discount = result.discount
       } else {
-        // Single-use lead coupon (percent-based)
         const { data: coupon } = await supabase
           .from('coupon_leads')
           .select('discount_percent, is_used')
@@ -108,39 +105,26 @@ export async function POST(request: Request) {
       }
     }
 
-    // Never let a discount exceed the subtotal.
     discount = Math.min(discount, subtotal)
+    const totalAmount = subtotal + SHIPPING_COST + COD_FEE - discount
 
-    const totalAmount = subtotal + SHIPPING_COST - discount
-
-    // ── Create Razorpay order ──
-    const razorpay = getRazorpayInstance()
-    const razorpayOrder = await razorpay.orders.create({
-      amount: totalAmount, // already in paise
-      currency: 'INR',
-      receipt: `receipt_${Date.now()}`,
-      notes: {
-        customer_email,
-        customer_phone,
-      },
-    })
-
-    // ── Create pending order in Supabase ──
+    // ── Create the COD order ──
     const order = await createOrder({
       customer_name,
       customer_email,
       customer_phone,
       customer_whatsapp_opted_in,
-      shipping_address,
+      shipping_address: shippingAddress,
       items,
       subtotal,
       shipping_cost: SHIPPING_COST,
       discount,
+      cod_fee: COD_FEE,
+      payment_method: 'cod',
       total_amount: totalAmount,
-      razorpay_order_id: razorpayOrder.id,
     })
 
-    // ── Mark single-use lead coupons as used (public coupons stay reusable) ──
+    // ── Mark single-use lead coupon as used (public coupons stay reusable) ──
     if (isLeadCoupon && discount > 0) {
       await supabase
         .from('coupon_leads')
@@ -148,18 +132,60 @@ export async function POST(request: Request) {
         .eq('coupon_code', coupon_code)
     }
 
+    // ── Decrement inventory (COD orders are confirmed on placement) ──
+    for (const item of items) {
+      const product = productMap.get(item.productId)
+      if (!product) continue
+      const previousStock = product.inventory_count
+      const newStock = Math.max(0, previousStock - item.quantity)
+
+      await supabase
+        .from('products')
+        .update({ inventory_count: newStock })
+        .eq('id', item.productId)
+
+      await logInventoryChange({
+        product_id: item.productId,
+        product_name: item.name,
+        change_type: 'sale',
+        quantity_change: -item.quantity,
+        previous_stock: previousStock,
+        new_stock: newStock,
+        order_id: order.id,
+      })
+    }
+
+    // ── Trigger notifications (fire-and-forget) ──
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? request.headers.get('origin') ?? ''
+
+    fetch(`${baseUrl}/api/notifications/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template: 'order_confirmation', order_id: order.id }),
+    }).catch((err) => console.error('Email notification failed:', err))
+
+    fetch(`${baseUrl}/api/notifications/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template: 'admin_new_order', order_id: order.id }),
+    }).catch((err) => console.error('Admin email notification failed:', err))
+
+    if (customer_whatsapp_opted_in) {
+      fetch(`${baseUrl}/api/notifications/whatsapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: 'order_confirmation', order_id: order.id }),
+      }).catch((err) => console.error('WhatsApp notification failed:', err))
+    }
+
     return NextResponse.json({
       order_id: order.id,
       order_number: order.order_number,
-      razorpay_order_id: razorpayOrder.id,
-      amount: totalAmount,
-      currency: 'INR',
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     })
   } catch (err) {
-    console.error('Create order error:', err)
+    console.error('COD order error:', err)
     return NextResponse.json(
-      { error: 'Failed to create order. Please try again.' },
+      { error: 'Failed to place order. Please try again.' },
       { status: 500 }
     )
   }

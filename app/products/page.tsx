@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/products/ProductCard'
@@ -7,15 +8,6 @@ import type { Product } from '@/types/supabase'
 
 // Always render from the live database so product/status changes show immediately.
 export const dynamic = 'force-dynamic'
-
-const PRODUCT_TINT: Record<string, string> = {
-  orange: 'from-orange-50 to-orange-100/40',
-  green: 'from-green-50 to-green-100/40',
-  purple: 'from-purple-50 to-purple-100/40',
-  yellow: 'from-yellow-50 to-yellow-100/40',
-  pink: 'from-pink-50 to-pink-100/40',
-  blue: 'from-blue-50 to-blue-100/40',
-}
 
 const PRODUCT_DOT: Record<string, string> = {
   orange: 'bg-product-orange',
@@ -27,8 +19,9 @@ const PRODUCT_DOT: Record<string, string> = {
 }
 
 function ComingSoonCard({ product }: { product: Product }) {
-  const tint = PRODUCT_TINT[product.color_theme ?? ''] ?? 'from-gray-50 to-gray-100/40'
   const dot = PRODUCT_DOT[product.color_theme ?? ''] ?? 'bg-brand-green'
+  const url = product.images?.[0]
+  const hasImage = !!url && !url.includes('placehold.co')
 
   return (
     <Link
@@ -36,30 +29,45 @@ function ComingSoonCard({ product }: { product: Product }) {
       className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-[#f3f3f3] pb-5 transition-shadow hover:shadow-md"
     >
       <div
-        className={`relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-gradient-to-br ${tint}`}
+        className="relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-white"
       >
-        <div className="flex flex-col items-center gap-3 px-6 text-center">
-          <span
-            className={`flex h-12 w-12 items-center justify-center rounded-full ${dot} text-white shadow-sm`}
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        {hasImage ? (
+          <>
+            <Image
+              src={url!}
+              alt={product.name}
+              fill
+              className="object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.05] sm:p-4"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
+            />
+            <span className="absolute left-3 top-3 z-10 rounded-full bg-gray-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+              Coming Soon
+            </span>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-3 px-6 text-center">
+            <span
+              className={`flex h-12 w-12 items-center justify-center rounded-full ${dot} text-white shadow-sm`}
             >
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-          </span>
-          <span className="rounded-full bg-gray-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
-            Coming Soon
-          </span>
-        </div>
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </span>
+            <span className="rounded-full bg-gray-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+              Coming Soon
+            </span>
+          </div>
+        )}
       </div>
       <div className="mt-3 px-4 sm:mt-4 sm:px-5">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-900 sm:text-sm">

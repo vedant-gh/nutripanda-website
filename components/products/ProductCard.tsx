@@ -6,15 +6,6 @@ import AddToCartButton from '@/components/AddToCartButton'
 import { formatPrice } from '@/lib/utils/format'
 import type { Product } from '@/types/supabase'
 
-const PRODUCT_TINT: Record<string, string> = {
-  orange: 'from-orange-50 to-orange-100/40',
-  green: 'from-green-50 to-green-100/40',
-  purple: 'from-purple-50 to-purple-100/40',
-  yellow: 'from-yellow-50 to-yellow-100/40',
-  pink: 'from-pink-50 to-pink-100/40',
-  blue: 'from-blue-50 to-blue-100/40',
-}
-
 const PRODUCT_DOT: Record<string, string> = {
   orange: 'bg-product-orange',
   green: 'bg-product-green',
@@ -34,7 +25,6 @@ export default function ProductCard({ product }: { product: Product }) {
   const hasImage = hasUsableImage(product)
   const hasDiscount =
     product.compare_at_price && product.compare_at_price > product.price
-  const tint = PRODUCT_TINT[product.color_theme ?? ''] ?? 'from-gray-50 to-gray-100/40'
   const dot = PRODUCT_DOT[product.color_theme ?? ''] ?? 'bg-brand-green'
   const outOfStock = product.inventory_count <= 0
 
@@ -43,7 +33,7 @@ export default function ProductCard({ product }: { product: Product }) {
       href={`/products/${product.slug}`}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-[#f3f3f3] pb-5 transition-shadow hover:shadow-md"
     >
-      <div className={`relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br ${tint}`}>
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-white">
         <div className="absolute left-3 top-3 z-10 flex flex-col items-start gap-1.5">
           {hasDiscount && (
             <span className="rounded-full bg-gray-900 px-3 py-1 text-[10px] font-semibold tracking-wide text-white sm:text-xs">
@@ -67,7 +57,7 @@ export default function ProductCard({ product }: { product: Product }) {
             src={image!}
             alt={product.name}
             fill
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+            className="object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.05] sm:p-4"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
           />
         ) : (
@@ -86,13 +76,28 @@ export default function ProductCard({ product }: { product: Product }) {
         )}
 
         {!outOfStock && (
-          <div className="absolute inset-x-0 bottom-0 z-10 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-            <div className="mx-3 mb-3" onClick={(e) => e.preventDefault()}>
-              <AddToCartButton
-                product={product}
-                className="flex w-full items-center justify-center rounded-xl bg-gray-900 py-2.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-40 sm:py-3 sm:text-sm"
-              />
-            </div>
+          <div
+            className="absolute bottom-3 right-3 z-10"
+            onClick={(e) => e.preventDefault()}
+          >
+            <AddToCartButton
+              product={product}
+              ariaLabel={`Add ${product.name} to cart`}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-900 text-white shadow-md transition-all duration-300 ease-out hover:bg-black active:scale-95 sm:h-11 sm:w-11 sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+              >
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+              </svg>
+            </AddToCartButton>
           </div>
         )}
       </div>

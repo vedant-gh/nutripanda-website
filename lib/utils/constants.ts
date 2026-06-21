@@ -1,5 +1,7 @@
 export const SHIPPING_COST = 0
 export const COUPON_DISCOUNT_PERCENT = 10
+// Cash-on-delivery handling fee, in paise (₹20).
+export const COD_FEE = 2000
 
 export const INDIAN_STATES = [
   'Andhra Pradesh',

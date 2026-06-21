@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { validateEmail, validatePhone, validatePincode } from '@/lib/utils/validators'
 import { INDIAN_STATES } from '@/lib/utils/constants'
-import { Loader2, Lock } from 'lucide-react'
+import { Loader2, Lock, Package } from 'lucide-react'
 
 export interface CheckoutFormData {
   name: string
@@ -20,11 +20,14 @@ export interface CheckoutFormData {
 interface CheckoutFormProps {
   onSubmit: (data: CheckoutFormData) => void
   isLoading: boolean
+  paymentMethod: 'prepaid' | 'cod'
+  onPaymentMethodChange: (method: 'prepaid' | 'cod') => void
+  codFee: number // in paise; ₹20 = 2000
 }
 
 type FormErrors = Partial<Record<keyof CheckoutFormData, string>>
 
-export default function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps) {
+export default function CheckoutForm({ onSubmit, isLoading, paymentMethod, onPaymentMethodChange, codFee }: CheckoutFormProps) {
   const [form, setForm] = useState<CheckoutFormData>({
     name: '',
     email: '',
@@ -207,6 +210,72 @@ export default function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps)
         {errors.state && <p className="mt-1 text-xs text-red-500">{errors.state}</p>}
       </div>
 
+      {/* Payment Method */}
+      <div className="pt-4">
+        <h2 className="text-lg font-bold text-gray-900 mb-3">Payment Method</h2>
+      </div>
+
+      <div className="space-y-3">
+        {/* Prepaid */}
+        <button
+          type="button"
+          onClick={() => onPaymentMethodChange('prepaid')}
+          aria-pressed={paymentMethod === 'prepaid'}
+          className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+            paymentMethod === 'prepaid'
+              ? 'border-[#12BC00] ring-1 ring-[#12BC00] bg-[#DCFDCC]/30'
+              : 'border-gray-300 hover:border-gray-400'
+          }`}
+        >
+          <span className="flex items-center gap-3">
+            <span
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                paymentMethod === 'prepaid' ? 'border-[#12BC00]' : 'border-gray-300'
+              }`}
+            >
+              {paymentMethod === 'prepaid' && (
+                <span className="h-2.5 w-2.5 rounded-full bg-[#12BC00]" />
+              )}
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-gray-900">Pay Online</span>
+              <span className="block text-xs text-gray-500">UPI · Cards · Net Banking via Razorpay</span>
+            </span>
+          </span>
+        </button>
+
+        {/* Cash on Delivery */}
+        <button
+          type="button"
+          onClick={() => onPaymentMethodChange('cod')}
+          aria-pressed={paymentMethod === 'cod'}
+          className={`flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+            paymentMethod === 'cod'
+              ? 'border-[#12BC00] ring-1 ring-[#12BC00] bg-[#DCFDCC]/30'
+              : 'border-gray-300 hover:border-gray-400'
+          }`}
+        >
+          <span className="flex items-center gap-3">
+            <span
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                paymentMethod === 'cod' ? 'border-[#12BC00]' : 'border-gray-300'
+              }`}
+            >
+              {paymentMethod === 'cod' && (
+                <span className="h-2.5 w-2.5 rounded-full bg-[#12BC00]" />
+              )}
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-gray-900">Cash on Delivery</span>
+              <span className="block text-xs text-gray-500">Pay when your order arrives</span>
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full bg-[#DCFDCC] px-2.5 py-1 text-xs font-semibold text-[#12BC00]">
+            +₹{Math.round(codFee / 100)}
+          </span>
+        </button>
+      </div>
+
       <button
         type="submit"
         disabled={isLoading}
@@ -217,6 +286,11 @@ export default function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps)
             <Loader2 size={18} className="animate-spin" />
             Processing...
           </>
+        ) : paymentMethod === 'cod' ? (
+          <>
+            <Package size={15} />
+            Place Order · Cash on Delivery
+          </>
         ) : (
           <>
             <Lock size={15} />
@@ -226,7 +300,9 @@ export default function CheckoutForm({ onSubmit, isLoading }: CheckoutFormProps)
       </button>
       <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400">
         <Lock size={12} />
-        Secure checkout powered by Razorpay
+        {paymentMethod === 'cod'
+          ? 'Pay in cash when your order is delivered.'
+          : 'Secure checkout powered by Razorpay'}
       </p>
     </form>
   )
