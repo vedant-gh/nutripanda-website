@@ -11,7 +11,7 @@ import CheckoutForm, { type CheckoutFormData } from '@/components/checkout/Check
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { trackCheckoutStarted, trackPaymentInitiated, trackPaymentFailed, trackCouponApplied } from '@/lib/posthog/events'
-import { getActivePublicCoupon } from '@/lib/utils/coupons'
+import { getActivePublicCoupons } from '@/lib/utils/coupons'
 
 declare global {
   interface Window {
@@ -48,6 +48,7 @@ export default function CheckoutPage() {
   const { items, isHydrated, getSubtotal, clearCart } = useCartStore()
   const [isLoading, setIsLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<'prepaid' | 'cod'>('prepaid')
+  const [showCoupons, setShowCoupons] = useState(false)
   const [couponInput, setCouponInput] = useState('')
   const [couponCode, setCouponCode] = useState('')
   const [discount, setDiscount] = useState(0)
@@ -86,7 +87,7 @@ export default function CheckoutPage() {
   const subtotal = getSubtotal()
   const codFee = paymentMethod === 'cod' ? COD_FEE : 0
   const total = subtotal + SHIPPING_COST + codFee - discount
-  const activeCoupon = getActivePublicCoupon()
+  const availableCoupons = getActivePublicCoupons()
 
   async function handleApplyCoupon(codeArg?: string) {
     const code = (codeArg ?? couponInput).trim()
@@ -343,40 +344,79 @@ export default function CheckoutPage() {
                   </div>
                 ) : (
                   <>
-                    {activeCoupon && (
-                      <button
-                        type="button"
-                        onClick={() => handleApplyCoupon(activeCoupon.code)}
-                        disabled={couponLoading || subtotal < activeCoupon.minSubtotal}
-                        className="mb-3 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-[#12BC00]/50 bg-[#DCFDCC]/40 px-4 py-3 text-left transition-colors hover:bg-[#DCFDCC]/70 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <span className="flex items-center gap-2">
+                    {availableCoupons.length > 0 && (
+                      <div className="mb-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowCoupons((s) => !s)}
+                          aria-expanded={showCoupons}
+                          className="flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-gray-300"
+                        >
+                          <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <svg
+                              aria-hidden
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="#12BC00"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-5 w-5 shrink-0"
+                            >
+                              <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
+                              <line x1="7" y1="7" x2="7.01" y2="7" />
+                            </svg>
+                            {availableCoupons.length}{' '}
+                            {availableCoupons.length === 1 ? 'coupon' : 'coupons'} available
+                          </span>
                           <svg
                             aria-hidden
                             viewBox="0 0 24 24"
                             fill="none"
-                            stroke="#12BC00"
+                            stroke="currentColor"
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="h-5 w-5 shrink-0"
+                            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${showCoupons ? 'rotate-180' : ''}`}
                           >
-                            <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
-                            <line x1="7" y1="7" x2="7.01" y2="7" />
+                            <path d="m6 9 6 6 6-6" />
                           </svg>
-                          <span className="text-sm leading-tight">
-                            <span className="font-bold text-gray-900">{activeCoupon.code}</span>
-                            <span className="ml-1.5 text-gray-600">{activeCoupon.label}</span>
-                          </span>
-                        </span>
-                        <span className="shrink-0 text-sm font-semibold text-[#0fa600]">
-                          {subtotal < activeCoupon.minSubtotal
-                            ? `Add ₹${Math.ceil((activeCoupon.minSubtotal - subtotal) / 100)} more`
-                            : couponLoading
-                              ? 'Applying…'
-                              : 'Apply'}
-                        </span>
-                      </button>
+                        </button>
+
+                        {showCoupons && (
+                          <div className="mt-2 space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-2">
+                            {availableCoupons.map((c) => {
+                              const eligible = subtotal >= c.minSubtotal
+                              return (
+                                <div
+                                  key={c.code}
+                                  className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2.5 ring-1 ring-gray-100"
+                                >
+                                  <span className="min-w-0 text-sm leading-tight">
+                                    <span className="font-bold text-gray-900">{c.code}</span>
+                                    <span className="mt-0.5 block text-xs text-gray-500">
+                                      {c.label}
+                                    </span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowCoupons(false)
+                                      handleApplyCoupon(c.code)
+                                    }}
+                                    disabled={!eligible || couponLoading}
+                                    className="shrink-0 rounded-full bg-[#12BC00] px-3.5 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300"
+                                  >
+                                    {eligible
+                                      ? 'Apply'
+                                      : `Add ₹${Math.ceil((c.minSubtotal - subtotal) / 100)} more`}
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
                     )}
                     <div className="flex gap-2">
                       <input

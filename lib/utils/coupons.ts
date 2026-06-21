@@ -21,11 +21,23 @@ export const PUBLIC_COUPONS: PublicCoupon[] = [
     label: 'Flat ₹150 OFF on orders above ₹500',
     active: true,
   },
+  {
+    code: 'PANDA300',
+    amountOff: 30000, // ₹300
+    minSubtotal: 99900, // ₹999
+    label: 'Flat ₹300 OFF on orders above ₹999',
+    active: true,
+  },
 ]
 
 /** The currently-promoted coupon to surface in the UI (or undefined). */
 export function getActivePublicCoupon(): PublicCoupon | undefined {
   return PUBLIC_COUPONS.find((c) => c.active)
+}
+
+/** All active public coupons, to list in the checkout coupon dropdown. */
+export function getActivePublicCoupons(): PublicCoupon[] {
+  return PUBLIC_COUPONS.filter((c) => c.active)
 }
 
 /** Look up an active public coupon by code (case-insensitive). */
