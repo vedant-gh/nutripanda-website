@@ -83,6 +83,14 @@ export interface Order {
   razorpay_payment_id: string | null
   razorpay_signature: string | null
   notes: string | null
+  // Shipping (Proship) — populated when an admin creates a shipment
+  proship_order_id?: string | null
+  awb_number?: string | null
+  courier_name?: string | null
+  shipping_label_url?: string | null
+  tracking_url?: string | null
+  shipment_status?: string | null
+  shipped_at?: string | null
   created_at: string
   updated_at: string
 }

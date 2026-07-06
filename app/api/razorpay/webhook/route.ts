@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { verifyWebhookSignature } from '@/lib/razorpay/utils'
 import { logInventoryChange } from '@/lib/supabase/queries'
-import type { OrderItem } from '@/types/supabase'
+import { createShipmentForOrder, liveShipmentsEnabled } from '@/lib/proship/fulfillment'
+import type { Order, OrderItem } from '@/types/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -81,6 +82,29 @@ export async function POST(request: Request) {
             new_stock: newStock,
             order_id: order.id,
           })
+        }
+      }
+
+      // ── Auto-create the Proship shipment (prepaid only, production-gated) ──
+      // COD never reaches this webhook (it doesn't go through Razorpay), so any
+      // order here is prepaid. Best-effort: a Proship failure is logged but must
+      // not fail the webhook — the manual "Create Shipment" button is the
+      // fallback, and createShipmentForOrder is idempotent on retry.
+      if (liveShipmentsEnabled()) {
+        try {
+          const paidOrder: Order = {
+            ...(order as Order),
+            payment_status: 'paid',
+            razorpay_payment_id: razorpayPaymentId,
+          }
+          const { alreadyExisted } = await createShipmentForOrder(paidOrder)
+          console.log(
+            alreadyExisted
+              ? `Auto-ship: order ${order.order_number} already had a shipment`
+              : `Auto-ship: created shipment for order ${order.order_number}`
+          )
+        } catch (shipErr) {
+          console.error(`Auto-ship failed for order ${order.order_number}:`, shipErr)
         }
       }
     }

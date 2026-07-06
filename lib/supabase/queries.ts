@@ -236,6 +236,30 @@ export async function updateOrderStatus(
   return data as Order
 }
 
+// Store Proship shipment details (AWB, label, courier) on an order after a
+// shipment is created from the admin dashboard.
+export async function updateOrderShipment(
+  orderId: string,
+  shipment: {
+    proship_order_id?: string | null
+    awb_number?: string | null
+    courier_name?: string | null
+    shipping_label_url?: string | null
+    tracking_url?: string | null
+    shipment_status?: string | null
+    shipped_at?: string | null
+  }
+): Promise<Order> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('orders')
+    .update(shipment)
+    .eq('id', orderId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as Order
+}
+
 export async function getOrders(filters?: {
   payment_status?: string
   order_status?: string
@@ -277,6 +301,17 @@ export async function getOrderById(id: string): Promise<Order | null> {
     .single()
   if (error && error.code !== 'PGRST116') throw error
   return (data as Order) ?? null
+}
+
+// All orders for a customer email (for the "My Orders" magic-link page).
+export async function getOrdersByEmail(email: string): Promise<Order[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('orders')
+    .select('*')
+    .eq('customer_email', email.trim().toLowerCase())
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data as Order[]
 }
 
 // ── Inventory ──
