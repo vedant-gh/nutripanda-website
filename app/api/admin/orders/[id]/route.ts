@@ -113,3 +113,48 @@ export async function PUT(
     )
   }
 }
+
+// DELETE — permanently remove an order. Note: inventory_log / notifications_log
+// reference orders with ON DELETE NO ACTION, so their rows must be cleared first.
+// Product stock is NOT restored on delete (use the inventory tool if needed).
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!(await verifyAdminSession())) {
+    return withCors(
+      NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+      request
+    )
+  }
+
+  try {
+    const { id } = await params
+
+    const existing = await getOrderById(id)
+    if (!existing) {
+      return withCors(
+        NextResponse.json({ error: 'Order not found' }, { status: 404 }),
+        request
+      )
+    }
+
+    const { getSupabaseAdmin } = await import('@/lib/supabase/admin')
+    const supabase = getSupabaseAdmin()
+
+    // Clear child rows first (FK is NO ACTION — would otherwise block the delete).
+    await supabase.from('inventory_log').delete().eq('order_id', id)
+    await supabase.from('notifications_log').delete().eq('order_id', id)
+
+    const { error } = await supabase.from('orders').delete().eq('id', id)
+    if (error) throw error
+
+    return withCors(NextResponse.json({ success: true }), request)
+  } catch (err) {
+    console.error('Admin delete order error:', err)
+    return withCors(
+      NextResponse.json({ error: 'Failed to delete order' }, { status: 500 }),
+      request
+    )
+  }
+}
