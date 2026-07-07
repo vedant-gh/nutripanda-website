@@ -79,9 +79,7 @@ export async function sendGetGabsTemplate(
   const sender = process.env.GETGABS_SENDER
   const campaignId = process.env.GETGABS_CAMPAIGN_ID
   if (!apiKey) return { ok: false, error: 'GETGABS_API_KEY not set' }
-  if (!sender || !campaignId) {
-    return { ok: false, error: 'GETGABS_SENDER / GETGABS_CAMPAIGN_ID not set' }
-  }
+  if (!sender) return { ok: false, error: 'GETGABS_SENDER not set' }
 
   try {
     const res = await fetch(`${BASE_URL}/whatsappbusiness/send-templated-message`, {
@@ -90,7 +88,7 @@ export async function sendGetGabsTemplate(
       body: JSON.stringify({
         api_key: apiKey,
         sender,
-        campaign_id: campaignId,
+        ...(campaignId ? { campaign_id: campaignId } : {}),
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to,

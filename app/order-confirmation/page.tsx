@@ -124,6 +124,7 @@ function OrderConfirmationContent() {
 
   const items = order.items as OrderItem[]
   const address = order.shipping_address
+  const isCod = order.payment_method === 'cod'
 
   return (
     <>
@@ -189,12 +190,31 @@ function OrderConfirmationContent() {
                 <span>-{formatPrice(order.discount)}</span>
               </div>
             )}
+            {order.cod_fee > 0 && (
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>COD fee</span>
+                <span>{formatPrice(order.cod_fee)}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-gray-200 pt-2 text-base font-bold text-gray-900">
-              <span>Total Paid</span>
+              <span>{isCod ? 'Pay on Delivery' : 'Total Paid'}</span>
               <span>{formatPrice(order.total_amount)}</span>
             </div>
           </div>
         </div>
+
+        {/* COD payment note */}
+        {isCod && (
+          <div className="mb-8 flex items-center gap-3 rounded-2xl border border-[#12BC00]/30 bg-[#DCFDCC]/40 p-5">
+            <span className="text-2xl" aria-hidden>💵</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Cash on Delivery</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
+                Please keep {formatPrice(order.total_amount)} ready in cash when your order arrives.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Shipping details */}
         <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">

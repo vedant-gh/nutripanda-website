@@ -45,7 +45,7 @@ interface RazorpayResponse {
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, isHydrated, getSubtotal, clearCart } = useCartStore()
+  const { items, isHydrated, getSubtotal } = useCartStore()
   const [isLoading, setIsLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<'prepaid' | 'cod'>('prepaid')
   const [showCoupons, setShowCoupons] = useState(false)
@@ -168,7 +168,8 @@ export default function CheckoutPage() {
         }
 
         const { order_id } = await codRes.json()
-        clearCart()
+        // Don't clearCart() here — it would trip the empty-cart guard and bounce
+        // to /products. The confirmation page clears the cart on mount.
         router.push(`/order-confirmation?order_id=${order_id}`)
         return
       }
@@ -242,7 +243,6 @@ export default function CheckoutPage() {
               throw new Error('Payment verification failed')
             }
 
-            clearCart()
             router.push(`/order-confirmation?order_id=${order_id}`)
           } catch {
             toast.error('Payment verification failed. Please contact support.')
