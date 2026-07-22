@@ -40,6 +40,12 @@ export default function Navbar() {
               >
                 About
               </Link>
+              <Link
+                href="/blog"
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Blog
+              </Link>
             </div>
           </div>
 
@@ -135,6 +141,13 @@ export default function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
             >
               About
+            </Link>
+            <Link
+              href="/blog"
+              className="block px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Blog
             </Link>
           </div>
         </div>

@@ -12,8 +12,21 @@ import {
   getComingSoonProducts,
   getAllTestimonials,
 } from "@/lib/supabase/queries";
+import { FAQS } from "@/lib/faq-data";
 
 export const dynamic = "force-dynamic";
+
+// FAQPage structured data — strongly favoured for AI-search citations and
+// Google rich results. Built from the same source as the on-page FAQ.
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((f) => ({
+    "@type": "Question",
+    name: f.question,
+    acceptedAnswer: { "@type": "Answer", text: f.answer },
+  })),
+};
 
 export default async function Home() {
   const [featured, comingSoon, testimonials] = await Promise.all([
@@ -31,6 +44,10 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-white font-sans">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <Navbar />
       <HeroSection />
       <ProductCards products={products} />

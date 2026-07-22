@@ -8,6 +8,15 @@ export const metadata: Metadata = {
   title: 'About Us | NutriPanda',
   description:
     'Learn about NutriPanda, our story, mission, and commitment to making nutrition fun, clean, and accessible for every Indian.',
+  alternates: { canonical: '/about' },
+  openGraph: {
+    type: 'website',
+    url: '/about',
+    siteName: 'NutriPanda',
+    title: 'About Us | NutriPanda',
+    description:
+      'Learn about NutriPanda, our story, mission, and commitment to making nutrition fun, clean, and accessible for every Indian.',
+  },
 }
 
 const VALUES = [

@@ -10,6 +10,8 @@ import type {
   ShippingAddress,
   OrderItem,
 } from '@/types/supabase'
+import type { BlogPost, BlogBlock } from '@/types/blog'
+import { estimateReadingTime } from '@/lib/blog/content'
 
 // ── Products ──
 
@@ -390,4 +392,209 @@ export async function getCustomers(filters?: {
   const { data, error, count } = await query
   if (error) throw error
   return { customers: data as Customer[], count: count ?? 0 }
+}
+
+// ── Blog (public) ──
+
+export async function getPublishedBlogPosts(): Promise<BlogPost[]> {
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+  if (error) throw error
+  return data as BlogPost[]
+}
+
+export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .single()
+  if (error && error.code !== 'PGRST116') throw error
+  return (data as BlogPost) ?? null
+}
+
+export async function getRelatedBlogPosts(
+  excludeSlug: string,
+  limit = 3
+): Promise<BlogPost[]> {
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .eq('status', 'published')
+    .neq('slug', excludeSlug)
+    .order('published_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data as BlogPost[]
+}
+
+// ── Blog (admin) ──
+
+export interface BlogPostInput {
+  slug: string
+  title: string
+  excerpt?: string | null
+  cover_image_url?: string | null
+  content: BlogBlock[]
+  author?: string | null
+  tags?: string[]
+  category?: string | null
+  status?: 'draft' | 'published'
+  is_featured?: boolean
+  seo_title?: string | null
+  seo_description?: string | null
+}
+
+export async function getAllBlogPostsAdmin(): Promise<BlogPost[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('blog_posts')
+    .select('*')
+    .order('updated_at', { ascending: false })
+  if (error) throw error
+  return data as BlogPost[]
+}
+
+export async function getBlogPostById(id: string): Promise<BlogPost | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('blog_posts')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (error && error.code !== 'PGRST116') throw error
+  return (data as BlogPost) ?? null
+}
+
+export async function createBlogPost(input: BlogPostInput): Promise<BlogPost> {
+  const status = input.status ?? 'draft'
+  const { data, error } = await getSupabaseAdmin()
+    .from('blog_posts')
+    .insert({
+      ...input,
+      reading_time: estimateReadingTime(input.content ?? []),
+      published_at: status === 'published' ? new Date().toISOString() : null,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data as BlogPost
+}
+
+export async function updateBlogPost(
+  id: string,
+  updates: Partial<BlogPostInput>
+): Promise<BlogPost> {
+  const admin = getSupabaseAdmin()
+  const patch: Record<string, unknown> = { ...updates }
+
+  if (updates.content) {
+    patch.reading_time = estimateReadingTime(updates.content)
+  }
+  // Stamp published_at the first time a post goes live; preserve it afterwards.
+  if (updates.status === 'published') {
+    const { data: current } = await admin
+      .from('blog_posts')
+      .select('published_at')
+      .eq('id', id)
+      .single()
+    if (!current?.published_at) patch.published_at = new Date().toISOString()
+  }
+
+  const { data, error } = await admin
+    .from('blog_posts')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data as BlogPost
+}
+
+export async function deleteBlogPost(id: string): Promise<void> {
+  const { error } = await getSupabaseAdmin()
+    .from('blog_posts')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ── Coupons (admin-managed) ──
+
+export interface Coupon {
+  id: string
+  code: string
+  discount_type: 'percent' | 'fixed'
+  discount_value: number
+  min_subtotal: number
+  max_discount: number | null
+  is_active: boolean
+  expires_at: string | null
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CouponInput {
+  code: string
+  discount_type: 'percent' | 'fixed'
+  discount_value: number
+  min_subtotal?: number
+  max_discount?: number | null
+  is_active?: boolean
+  expires_at?: string | null
+  description?: string | null
+}
+
+export async function getAllCouponsAdmin(): Promise<Coupon[]> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('coupons')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data as Coupon[]
+}
+
+/** Look up a coupon by code (service role — used for server-side validation). */
+export async function getCouponByCode(code: string): Promise<Coupon | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('coupons')
+    .select('*')
+    .eq('code', code.trim().toUpperCase())
+    .maybeSingle()
+  if (error) throw error
+  return (data as Coupon) ?? null
+}
+
+export async function createCoupon(input: CouponInput): Promise<Coupon> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('coupons')
+    .insert({ ...input, code: input.code.trim().toUpperCase() })
+    .select()
+    .single()
+  if (error) throw error
+  return data as Coupon
+}
+
+export async function updateCoupon(
+  id: string,
+  updates: Partial<CouponInput>
+): Promise<Coupon> {
+  const patch: Partial<CouponInput> = { ...updates }
+  if (patch.code) patch.code = patch.code.trim().toUpperCase()
+  const { data, error } = await getSupabaseAdmin()
+    .from('coupons')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data as Coupon
+}
+
+export async function deleteCoupon(id: string): Promise<void> {
+  const { error } = await getSupabaseAdmin().from('coupons').delete().eq('id', id)
+  if (error) throw error
 }

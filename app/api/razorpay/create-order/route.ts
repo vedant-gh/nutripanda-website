@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getRazorpayInstance } from '@/lib/razorpay/utils'
-import { createOrder } from '@/lib/supabase/queries'
+import { createOrder, getCouponByCode } from '@/lib/supabase/queries'
 import { validateEmail, validatePhone, validatePincode } from '@/lib/utils/validators'
 import { SHIPPING_COST } from '@/lib/utils/constants'
-import { findPublicCoupon, computePublicCouponDiscount } from '@/lib/utils/coupons'
+import {
+  findPublicCoupon,
+  computePublicCouponDiscount,
+  computeDbCouponDiscount,
+} from '@/lib/utils/coupons'
 import type { OrderItem, ShippingAddress } from '@/types/supabase'
 
 export async function POST(request: Request) {
@@ -94,16 +98,23 @@ export async function POST(request: Request) {
         const result = computePublicCouponDiscount(publicCoupon, subtotal)
         if (result.ok) discount = result.discount
       } else {
-        // Single-use lead coupon (percent-based)
-        const { data: coupon } = await supabase
-          .from('coupon_leads')
-          .select('discount_percent, is_used')
-          .eq('coupon_code', coupon_code)
-          .single()
+        // Admin-managed reusable coupon (percentage or fixed)
+        const adminCoupon = await getCouponByCode(coupon_code)
+        if (adminCoupon) {
+          const result = computeDbCouponDiscount(adminCoupon, subtotal)
+          if (result.ok) discount = result.discount
+        } else {
+          // Single-use lead coupon (percent-based)
+          const { data: coupon } = await supabase
+            .from('coupon_leads')
+            .select('discount_percent, is_used')
+            .eq('coupon_code', coupon_code)
+            .single()
 
-        if (coupon && !coupon.is_used) {
-          discount = Math.round(subtotal * (coupon.discount_percent / 100))
-          isLeadCoupon = true
+          if (coupon && !coupon.is_used) {
+            discount = Math.round(subtotal * (coupon.discount_percent / 100))
+            isLeadCoupon = true
+          }
         }
       }
     }

@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { findPublicCoupon, computePublicCouponDiscount } from '@/lib/utils/coupons'
+import {
+  findPublicCoupon,
+  computePublicCouponDiscount,
+  computeDbCouponDiscount,
+} from '@/lib/utils/coupons'
+import { getCouponByCode } from '@/lib/supabase/queries'
 
 export async function POST(request: Request) {
   try {
@@ -36,7 +41,24 @@ export async function POST(request: Request) {
       })
     }
 
-    // 2. Single-use lead coupons (percent-based)
+    // 2. Admin-managed reusable coupons (percentage or fixed)
+    const adminCoupon = await getCouponByCode(code)
+    if (adminCoupon) {
+      const result = computeDbCouponDiscount(adminCoupon, subtotal)
+      if (!result.ok) {
+        return NextResponse.json({ valid: false, error: result.error })
+      }
+      return NextResponse.json({
+        valid: true,
+        discount: result.discount,
+        code: adminCoupon.code,
+        ...(adminCoupon.discount_type === 'percent'
+          ? { discountPercent: adminCoupon.discount_value }
+          : {}),
+      })
+    }
+
+    // 3. Single-use lead coupons (percent-based)
     const supabase = getSupabaseAdmin()
 
     const { data: coupon, error } = await supabase

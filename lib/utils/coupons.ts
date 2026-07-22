@@ -62,3 +62,44 @@ export function computePublicCouponDiscount(
   // Never discount below zero.
   return { ok: true, discount: Math.min(coupon.amountOff, subtotal) }
 }
+
+// ── Admin-managed DB coupons (percentage or fixed) ──
+
+/** The subset of a `coupons` row needed to compute a discount. */
+export interface CouponRule {
+  discount_type: 'percent' | 'fixed'
+  discount_value: number // percent: 1-100; fixed: paise
+  min_subtotal: number // paise
+  max_discount: number | null // paise cap (percent coupons)
+  is_active: boolean
+  expires_at: string | null
+}
+
+/**
+ * Compute the discount (in paise) for an admin-managed coupon. Single source of
+ * truth used by the validate endpoint and by both order-creation routes so the
+ * quoted and the charged discount can never diverge.
+ */
+export function computeDbCouponDiscount(
+  c: CouponRule,
+  subtotal: number
+): CouponResult {
+  if (!c.is_active) return { ok: false, error: 'This coupon is no longer active' }
+  if (c.expires_at && new Date(c.expires_at).getTime() < Date.now()) {
+    return { ok: false, error: 'This coupon has expired' }
+  }
+  if (subtotal < c.min_subtotal) {
+    const gap = Math.ceil((c.min_subtotal - subtotal) / 100)
+    return { ok: false, error: `Add ₹${gap} more to use this coupon` }
+  }
+
+  let discount =
+    c.discount_type === 'percent'
+      ? Math.round((subtotal * c.discount_value) / 100)
+      : c.discount_value
+  if (c.max_discount != null && discount > c.max_discount) discount = c.max_discount
+  discount = Math.min(discount, subtotal)
+
+  if (discount <= 0) return { ok: false, error: 'This coupon has no value on your cart' }
+  return { ok: true, discount }
+}

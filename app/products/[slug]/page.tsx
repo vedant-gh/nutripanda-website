@@ -8,6 +8,7 @@ import ProductHero from '@/components/product-detail/ProductHero'
 import TrackProductView from '@/components/product-detail/TrackProductView'
 import { getProductBySlug, getAllProducts } from '@/lib/supabase/queries'
 import { formatPrice } from '@/lib/utils/format'
+import { SITE_URL } from '@/lib/seo'
 import type { Product, Ingredient } from '@/types/supabase'
 
 // Always render from the live database so product/status changes show immediately.
@@ -96,13 +97,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const product = await getProductBySlug(slug)
   if (!product) return { title: 'Product Not Found' }
 
+  const canonical = `/products/${slug}`
+  const description =
+    product.seo_description ?? product.short_description ?? product.description ?? undefined
+  const image = product.images?.[0]
+
   return {
     title: product.seo_title ?? `${product.name} | NutriPanda`,
-    description: product.seo_description ?? product.short_description ?? product.description ?? undefined,
+    description,
+    alternates: { canonical },
     openGraph: {
+      type: 'website',
+      url: `${SITE_URL}${canonical}`,
+      siteName: 'NutriPanda',
       title: product.seo_title ?? product.name,
-      description: product.seo_description ?? product.short_description ?? undefined,
-      images: product.images?.[0] ? [{ url: product.images[0] }] : undefined,
+      description,
+      images: image ? [{ url: image, alt: product.name }] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: product.seo_title ?? product.name,
+      description,
+      images: image ? [image] : undefined,
     },
   }
 }
@@ -226,20 +242,27 @@ function RelatedProductCard({ product }: { product: Product }) {
 // ── JSON-LD Structured Data ──
 
 function ProductJsonLd({ product }: { product: Product }) {
-  const jsonLd = {
+  const url = `${SITE_URL}/products/${product.slug}`
+
+  const productJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
     description: product.short_description ?? product.description ?? '',
-    image: product.images?.[0] ?? undefined,
+    image: product.images?.length ? product.images : undefined,
+    sku: product.slug,
+    category: product.category ?? 'Wellness Supplements',
+    url,
     brand: {
       '@type': 'Brand',
       name: 'NutriPanda',
     },
     offers: {
       '@type': 'Offer',
+      url,
       price: (product.price / 100).toFixed(2),
       priceCurrency: 'INR',
+      priceValidUntil: '2027-12-31',
       availability: product.is_coming_soon
         ? 'https://schema.org/PreOrder'
         : product.inventory_count > 0
@@ -252,11 +275,27 @@ function ProductJsonLd({ product }: { product: Product }) {
     },
   }
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Products', item: `${SITE_URL}/products` },
+      { '@type': 'ListItem', position: 3, name: product.name, item: url },
+    ],
+  }
+
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+    </>
   )
 }
 
