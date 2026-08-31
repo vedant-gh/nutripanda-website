@@ -24,7 +24,7 @@ export function corsHeaders(request: Request) {
   const isAllowed = ALLOWED_ORIGINS.includes(origin)
 
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : '',
+    ...(isAllowed ? { 'Access-Control-Allow-Origin': origin } : {}),
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Credentials': 'true',
@@ -43,6 +43,17 @@ export function withCors(response: NextResponse, request: Request) {
   const headers = corsHeaders(request)
   for (const [key, value] of Object.entries(headers)) {
     response.headers.set(key, value)
+  }
+  const vary = new Set(
+    (response.headers.get('Vary') ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+  )
+  vary.add('Origin')
+  response.headers.set('Vary', Array.from(vary).join(', '))
+  if (!response.headers.has('Cache-Control')) {
+    response.headers.set('Cache-Control', 'private, no-store')
   }
   return response
 }

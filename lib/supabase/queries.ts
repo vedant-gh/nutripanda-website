@@ -12,6 +12,7 @@ import type {
 } from '@/types/supabase'
 import type { BlogPost, BlogBlock } from '@/types/blog'
 import { estimateReadingTime } from '@/lib/blog/content'
+import { isSafeAdminOrderSearch } from '@/lib/orders/admin-list-input'
 
 // ── Products ──
 
@@ -118,19 +119,12 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) throw error
 }
 
-// Permanently remove a product row. Existing orders are unaffected because
-// their line items are stored as a JSON snapshot, not a foreign key. We do
-// clear inventory_log rows first, since they reference product_id.
+// Permanently remove only a product that has no inventory/audit references.
+// PostgreSQL's foreign keys reject products with history. Never delete those
+// logs first: doing so would destroy the audit trail even if another reference
+// later caused the product deletion itself to fail.
 export async function hardDeleteProduct(id: string): Promise<void> {
-  const admin = getSupabaseAdmin()
-
-  const { error: logError } = await admin
-    .from('inventory_log')
-    .delete()
-    .eq('product_id', id)
-  if (logError) throw logError
-
-  const { error } = await admin
+  const { error } = await getSupabaseAdmin()
     .from('products')
     .delete()
     .eq('id', id)
@@ -174,54 +168,176 @@ interface CreateOrderInput {
   razorpay_order_id?: string
 }
 
-export async function createOrder(input: CreateOrderInput): Promise<Order> {
-  const { data, error } = await getSupabaseAdmin()
-    .from('orders')
-    .insert({
-      ...input,
-      discount: input.discount ?? 0,
-      cod_fee: input.cod_fee ?? 0,
-      payment_method: input.payment_method ?? 'prepaid',
-      payment_status: 'pending',
-      order_status: 'confirmed',
-    })
-    .select()
-    .single()
-  if (error) throw error
-
-  // Upsert customer
-  await getSupabaseAdmin().from('customers').upsert(
-    {
-      email: input.customer_email,
-      name: input.customer_name,
-      phone: input.customer_phone,
-      whatsapp_opted_in: input.customer_whatsapp_opted_in,
-    },
-    { onConflict: 'email' }
-  )
-
-  return data as Order
+interface TransactionalOrderInput extends CreateOrderInput {
+  coupon_code?: string
+  lead_coupon_code?: string
+  idempotency_key?: string
+  request_fingerprint: string
 }
 
-export async function updateOrderPayment(
-  orderId: string,
-  razorpayData: {
-    razorpay_order_id: string
-    razorpay_payment_id: string
-    razorpay_signature: string
-  }
-): Promise<Order> {
+export async function reservePrepaidOrder(
+  input: TransactionalOrderInput & { razorpay_order_id: string }
+): Promise<{ order: Order; created: boolean }> {
+  const { data, error } = await getSupabaseAdmin().rpc('reserve_prepaid_order', {
+    p_checkout: input,
+  })
+  if (error) throw error
+  return data as { order: Order; created: boolean }
+}
+
+export async function createCodOrderAtomic(
+  input: TransactionalOrderInput & { idempotency_key: string }
+): Promise<{ order: Order; created: boolean }> {
+  const { data, error } = await getSupabaseAdmin().rpc('create_cod_order', {
+    p_checkout: input,
+  })
+  if (error) throw error
+  return data as { order: Order; created: boolean }
+}
+
+export async function getOrderByCheckoutIdempotencyKey(
+  key: string
+): Promise<Order | null> {
   const { data, error } = await getSupabaseAdmin()
     .from('orders')
-    .update({
-      ...razorpayData,
-      payment_status: 'paid',
-    })
-    .eq('id', orderId)
-    .select()
-    .single()
+    .select('*')
+    .eq('checkout_idempotency_key', key)
+    .maybeSingle()
   if (error) throw error
-  return data as Order
+  return (data as Order | null) ?? null
+}
+
+export async function finalizeRazorpayPayment(input: {
+  order_id?: string
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature?: string
+  amount: number
+  currency: 'INR'
+  webhook_event_id?: string
+  webhook_event_type?: string
+  webhook_payload_hash?: string
+}): Promise<{
+  order: Order
+  newly_finalized: boolean
+  requires_refund: boolean
+  payment_review_reason: Order['payment_review_reason']
+}> {
+  const { data, error } = await getSupabaseAdmin().rpc('finalize_razorpay_payment', {
+    p_order_id: input.order_id ?? null,
+    p_razorpay_order_id: input.razorpay_order_id,
+    p_razorpay_payment_id: input.razorpay_payment_id,
+    p_razorpay_signature: input.razorpay_signature ?? null,
+    p_amount: input.amount,
+    p_currency: input.currency,
+    p_webhook_event_id: input.webhook_event_id ?? null,
+    p_webhook_event_type: input.webhook_event_type ?? null,
+    p_webhook_payload_hash: input.webhook_payload_hash ?? null,
+  })
+  if (error) throw error
+  return data as {
+    order: Order
+    newly_finalized: boolean
+    requires_refund: boolean
+    payment_review_reason: Order['payment_review_reason']
+  }
+}
+
+export async function hasActivePrepaidReservations(order: Pick<Order, 'id' | 'items'>) {
+  const { data, error } = await getSupabaseAdmin()
+    .from('inventory_reservations')
+    .select('product_id,quantity,status,expires_at')
+    .eq('order_id', order.id)
+
+  if (error) throw error
+  if (!Array.isArray(data) || data.length !== order.items.length) return false
+
+  const expected = new Map(order.items.map((item) => [item.productId, item.quantity]))
+  const now = Date.now()
+  return data.every((reservation) => (
+    reservation.status === 'reserved'
+    && typeof reservation.expires_at === 'string'
+    && Date.parse(reservation.expires_at) > now
+    && expected.get(String(reservation.product_id)) === reservation.quantity
+  ))
+}
+
+export async function renewPrepaidCheckoutReservation(
+  orderId: string,
+  requestFingerprint: string
+): Promise<Order> {
+  const { data, error } = await getSupabaseAdmin().rpc('renew_prepaid_checkout_reservation', {
+    p_order_id: orderId,
+    p_fingerprint: requestFingerprint,
+  })
+  if (error) throw error
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) throw new Error('renew_prepaid_checkout_reservation returned no order')
+  return row as Order
+}
+
+export async function recordRazorpayPaymentFailure(input: {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  webhook_event_id: string
+  webhook_event_type: string
+  webhook_payload_hash: string
+}): Promise<{ duplicate: boolean }> {
+  const { data, error } = await getSupabaseAdmin().rpc('record_razorpay_payment_failure', {
+    p_razorpay_order_id: input.razorpay_order_id,
+    p_razorpay_payment_id: input.razorpay_payment_id,
+    p_webhook_event_id: input.webhook_event_id,
+    p_webhook_event_type: input.webhook_event_type,
+    p_webhook_payload_hash: input.webhook_payload_hash,
+  })
+  if (error) throw error
+  return data as { duplicate: boolean }
+}
+
+export async function consumeRateLimit(input: {
+  scope_key: string
+  action: string
+  limit: number
+  window_seconds: number
+}): Promise<boolean> {
+  const { data, error } = await getSupabaseAdmin().rpc('consume_rate_limit', {
+    p_scope_key: input.scope_key,
+    p_action: input.action,
+    p_limit: input.limit,
+    p_window_seconds: input.window_seconds,
+  })
+  if (error) throw error
+  return data === true
+}
+
+export const consumeCheckoutRateLimit = consumeRateLimit
+
+export async function adjustInventoryAtomic(input: {
+  product_id: string
+  quantity_change: number
+  change_type?: 'restock' | 'adjustment' | 'return'
+  notes?: string
+}): Promise<{
+  product_id: string
+  previous_stock: number
+  new_stock: number
+  quantity_change: number
+  log: InventoryLog
+}> {
+  const { data, error } = await getSupabaseAdmin().rpc('admin_adjust_inventory', {
+    p_product_id: input.product_id,
+    p_quantity_change: input.quantity_change,
+    p_change_type: input.change_type ?? 'adjustment',
+    p_notes: input.notes ?? null,
+  })
+  if (error) throw error
+  return data as {
+    product_id: string
+    previous_stock: number
+    new_stock: number
+    quantity_change: number
+    log: InventoryLog
+  }
 }
 
 export async function updateOrderStatus(
@@ -263,8 +379,8 @@ export async function updateOrderShipment(
 }
 
 export async function getOrders(filters?: {
-  payment_status?: string
-  order_status?: string
+  payment_status?: Order['payment_status']
+  order_status?: Order['order_status']
   search?: string
   limit?: number
   offset?: number
@@ -281,13 +397,16 @@ export async function getOrders(filters?: {
     query = query.eq('order_status', filters.order_status)
   }
   if (filters?.search) {
+    if (!isSafeAdminOrderSearch(filters.search)) {
+      throw new Error('Unsafe admin order search')
+    }
     query = query.or(
       `order_number.ilike.%${filters.search}%,customer_name.ilike.%${filters.search}%,customer_email.ilike.%${filters.search}%`
     )
   }
 
-  const limit = filters?.limit ?? 20
-  const offset = filters?.offset ?? 0
+  const limit = Math.min(100, Math.max(1, Math.trunc(filters?.limit ?? 20)))
+  const offset = Math.min(1_000_000, Math.max(0, Math.trunc(filters?.offset ?? 0)))
   query = query.range(offset, offset + limit - 1)
 
   const { data, error, count } = await query
@@ -303,6 +422,18 @@ export async function getOrderById(id: string): Promise<Order | null> {
     .single()
   if (error && error.code !== 'PGRST116') throw error
   return (data as Order) ?? null
+}
+
+export async function getOrderByRazorpayOrderId(
+  razorpayOrderId: string
+): Promise<Order | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from('orders')
+    .select('*')
+    .eq('razorpay_order_id', razorpayOrderId)
+    .maybeSingle()
+  if (error) throw error
+  return (data as Order | null) ?? null
 }
 
 // All orders for a customer email (for the "My Orders" magic-link page).
@@ -360,9 +491,13 @@ export async function logNotification(input: {
   status?: 'sent' | 'delivered' | 'failed'
   error_message?: string
 }): Promise<void> {
+  const status = input.status ?? 'sent'
   const { error } = await getSupabaseAdmin().from('notifications_log').insert({
     ...input,
-    status: input.status ?? 'sent',
+    status,
+    sent_at: status === 'sent' || status === 'delivered'
+      ? new Date().toISOString()
+      : null,
   })
   if (error) throw error
 }

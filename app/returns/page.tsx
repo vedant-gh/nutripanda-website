@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Return, Refund & Replacement Policy | NutriPanda",
+export const metadata = buildPageMetadata({
+  title: "Return, Refund & Replacement Policy",
   description:
     "Eligibility, claim process, refunds, and cancellation terms for Nutripanda orders.",
-};
+  path: "/returns",
+});
 
 export default function ReturnsPage() {
   return (

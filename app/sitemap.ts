@@ -9,6 +9,12 @@ import {
 // Regenerate at most hourly so new products/posts appear without a redeploy.
 export const revalidate = 3600;
 
+function validDate(value: string | null | undefined): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 const STATIC_ROUTES: {
   path: string;
   changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
@@ -29,11 +35,8 @@ const STATIC_ROUTES: {
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
-
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
     url: `${SITE_URL}${r.path}`,
-    lastModified: now,
     changeFrequency: r.changeFrequency,
     priority: r.priority,
   }));
@@ -53,16 +56,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const productEntries: MetadataRoute.Sitemap = [...productSlugs].map(
       ([slug, updated]) => ({
-        url: `${SITE_URL}/products/${slug}`,
-        lastModified: updated ? new Date(updated) : now,
+        url: `${SITE_URL}/products/${encodeURIComponent(slug)}`,
+        ...(validDate(updated) ? { lastModified: validDate(updated) } : {}),
         changeFrequency: "weekly",
         priority: 0.8,
       })
     );
 
     const postEntries: MetadataRoute.Sitemap = posts.map((post) => ({
-      url: `${SITE_URL}/blog/${post.slug}`,
-      lastModified: new Date(post.updated_at ?? post.published_at ?? now),
+      url: `${SITE_URL}/blog/${encodeURIComponent(post.slug)}`,
+      ...(validDate(post.updated_at ?? post.published_at)
+        ? { lastModified: validDate(post.updated_at ?? post.published_at) }
+        : {}),
       changeFrequency: "monthly",
       priority: 0.6,
     }));

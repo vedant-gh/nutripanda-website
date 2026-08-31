@@ -38,6 +38,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # mcp config (contains secrets)
 .mcp.json
@@ -51,4 +52,8 @@ next-env.d.ts
 
 # agent tooling (not product code)
 .agents/
+.codex/
 skills-lock.json
+
+# Supabase CLI local state
+supabase/.temp/

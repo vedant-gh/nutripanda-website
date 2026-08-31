@@ -10,12 +10,10 @@ import {
   getBlogPostBySlug,
   getRelatedBlogPosts,
 } from '@/lib/supabase/queries'
-import { SITE_URL } from '@/lib/seo'
+import { absoluteUrl, SITE_NAME, SITE_URL } from '@/lib/seo'
 
 // Always render from the live database so edits/publishing show immediately.
 export const dynamic = 'force-dynamic'
-
-const SITE_NAME = 'NutriPanda'
 
 function formatDate(value: string | null): string | null {
   if (!value) return null
@@ -37,24 +35,35 @@ export async function generateMetadata({
   const post = await getBlogPostBySlug(slug)
 
   if (!post) {
-    return { title: 'Article not found — NutriPanda Journal' }
+    return {
+      title: { absolute: 'Article not found | NutriPanda Journal' },
+      robots: { index: false, follow: false },
+    }
   }
 
   const title = post.seo_title ?? post.title
-  const description = post.seo_description ?? post.excerpt ?? undefined
-  const images = post.cover_image_url ? [post.cover_image_url] : undefined
+  const browserTitle = /nutripanda/i.test(title) ? title : `${title} | NutriPanda`
+  const description =
+    post.seo_description ??
+    post.excerpt ??
+    `Read ${post.title} in the NutriPanda Journal.`
+  const canonical = absoluteUrl(`/blog/${encodeURIComponent(post.slug)}`)
+  const images = post.cover_image_url
+    ? [{ url: post.cover_image_url, alt: post.title }]
+    : undefined
 
   return {
-    title,
+    title: { absolute: browserTitle },
     description,
-    alternates: { canonical: `/blog/${slug}` },
+    alternates: { canonical },
     openGraph: {
       title,
       description,
       type: 'article',
-      url: `/blog/${slug}`,
+      locale: 'en_IN',
+      url: canonical,
       siteName: SITE_NAME,
-      images,
+      images: images?.map((image) => image.url),
       ...(post.published_at ? { publishedTime: post.published_at } : {}),
       ...(post.updated_at ? { modifiedTime: post.updated_at } : {}),
     },
@@ -83,21 +92,21 @@ export default async function BlogPostPage({
   const date = formatDate(post.published_at)
   const chip = post.category ?? post.tags?.[0] ?? null
 
-  const postUrl = `${SITE_URL}/blog/${post.slug}`
+  const postUrl = absoluteUrl(`/blog/${encodeURIComponent(post.slug)}`)
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: post.title,
+    inLanguage: 'en-IN',
     mainEntityOfPage: { '@type': 'WebPage', '@id': postUrl },
     url: postUrl,
     ...(post.excerpt ? { description: post.excerpt } : {}),
     ...(post.cover_image_url ? { image: [post.cover_image_url] } : {}),
     ...(post.published_at ? { datePublished: post.published_at } : {}),
     ...(post.updated_at ? { dateModified: post.updated_at } : {}),
-    author: {
-      '@type': 'Person',
-      name: post.author ?? SITE_NAME,
-    },
+    author: post.author
+      ? { '@type': 'Person', name: post.author }
+      : { '@type': 'Organization', name: SITE_NAME, url: SITE_URL },
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,
@@ -124,11 +133,15 @@ export default async function BlogPostPage({
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+        }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, '\\u003c'),
+        }}
       />
 
       <article className="mx-auto max-w-3xl px-4 pt-8 pb-16 sm:px-6 sm:pt-12 sm:pb-24 lg:px-8">

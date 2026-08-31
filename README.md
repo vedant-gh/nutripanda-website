@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NutriPanda storefront and API
 
-## Getting Started
+Next.js storefront and server API for NutriPanda. Checkout is guest-only;
+Supabase stores catalog and commerce data, Razorpay handles prepaid payments,
+and Proship handles fulfilment. The separate dashboard calls the protected API
+in this project.
 
-First, run the development server:
+## Local development
+
+Copy `.env.example` to `.env.local`, configure the required services, then run:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The storefront/API runs at `http://localhost:3002`. The dashboard runs at
+`http://localhost:3000` with `NEXT_PUBLIC_API_URL=http://localhost:3002`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Apply every file in `supabase/migrations/` in filename order. Do this before
+deploying the application code: checkout, shipping, notification, dashboard
+rate-limit, customer-login, and refund RPCs depend on those migrations.
 
-## Learn More
+Do not enable `PROSHIP_LIVE_SHIPMENTS` until Proship credentials, pickup data,
+package dimensions, sandbox serviceability, booking, reconciliation, and
+cancellation have all been verified.
 
-To learn more about Next.js, take a look at the following resources:
+## Dashboard roles
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The existing dashboard deployment supports full `admin` and blog-only
+`blog_editor` sessions. See `DASHBOARD_ACCESS.md` for the exact credential and
+login flow. API authorization in this project is authoritative; sidebar hiding
+alone is never relied on.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Release checks
 
-## Deploy on Vercel
+```bash
+npm run lint
+npx tsc --noEmit
+npm test
+npm run build
+npm audit
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The rollback-only SQL integration checks in `tests/commerce-hardening.sql`,
+`tests/shipping-hardening.sql`, `tests/checkout-abuse.sql`, and
+`tests/legacy-inventory-migration.sql` should also be run against an isolated
+database after the migrations are applied. They must never be pointed at
+production.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Production essentials
+
+- Use independent random secrets of at least 32 characters for dashboard,
+  customer, order-access, rate-limit, and notification-worker signing.
+- Keep `RAZORPAY_WEBHOOK_SECRET` distinct from `RAZORPAY_KEY_SECRET`.
+- Configure Razorpay to deliver its signed webhook to
+  `/api/razorpay/webhook`.
+- Configure the Netlify scheduled notification worker and provider templates.
+- Set the canonical HTTPS `NEXT_PUBLIC_SITE_URL` and exact
+  `ADMIN_DASHBOARD_URL`.
+- Create a Cloudflare Turnstile widget for the checkout domain and set both
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`. Set
+  `TURNSTILE_EXPECTED_HOSTNAME=nutripanda.in` in production. New checkouts fail
+  closed when either side is missing or the challenge cannot be verified.
+- For paid prepaid orders, use the dashboard to stop/reconcile the carrier
+  first. Only after that succeeds should the exact full Razorpay refund be
+  issued and verified; local cancellation then restores inventory once.
+- Captures after cancellation/expiry and deliveries after cancellation are
+  retained as explicit review states instead of being silently fulfilled or
+  hidden from inventory/payment reconciliation.

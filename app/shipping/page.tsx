@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Shipping Policy | NutriPanda",
+export const metadata = buildPageMetadata({
+  title: "Shipping Policy",
   description:
     "Processing times, domestic shipping rates, tracking, and delivery terms for Nutripanda orders.",
-};
+  path: "/shipping",
+});
 
 export default function ShippingPage() {
   return (

@@ -13,6 +13,14 @@ import {
   getAllTestimonials,
 } from "@/lib/supabase/queries";
 import { FAQS } from "@/lib/faq-data";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata = buildPageMetadata({
+  title: "NutriPanda | Clean Nutrition Gummies Made in India",
+  description:
+    "Discover clean, vegan nutrition gummies made in India with real ingredients, no added sugar, no gelatin, and effective everyday doses.",
+  path: "/",
+});
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +54,9 @@ export default async function Home() {
     <div className="min-h-screen bg-white font-sans">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
       <Navbar />
       <HeroSection />

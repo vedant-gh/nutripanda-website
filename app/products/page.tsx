@@ -1,26 +1,18 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import type { Metadata } from 'next'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/products/ProductCard'
 import { getAllProducts, getComingSoonProducts } from '@/lib/supabase/queries'
+import { buildPageMetadata } from '@/lib/seo'
 import type { Product } from '@/types/supabase'
 
-export const metadata: Metadata = {
-  title: 'Shop Daily Wellness Gummies',
+export const metadata = buildPageMetadata({
+  title: 'Shop Daily Wellness Gummies | NutriPanda',
   description:
-    'Browse NutriPanda\'s range of vegan, sugar-free daily wellness gummies — immunity, skin and more. FSSAI-compliant, made in India, with free shipping on prepaid orders.',
-  alternates: { canonical: '/products' },
-  openGraph: {
-    type: 'website',
-    url: '/products',
-    siteName: 'NutriPanda',
-    title: 'Shop Daily Wellness Gummies | NutriPanda',
-    description:
-      'Vegan, sugar-free daily wellness gummies — immunity, skin and more. FSSAI-compliant, made in India.',
-  },
-}
+    "Browse NutriPanda's vegan daily wellness gummies for immunity, skin, and everyday nutrition. Made in India with no added sugar or gelatin.",
+  path: '/products',
+})
 
 // Always render from the live database so product/status changes show immediately.
 export const dynamic = 'force-dynamic'

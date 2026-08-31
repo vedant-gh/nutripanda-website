@@ -11,7 +11,7 @@ import LoginForm from './LoginForm'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'My Orders | NutriPanda',
+  title: 'My Orders',
   robots: { index: false, follow: false },
 }
 
@@ -80,10 +80,9 @@ async function OrdersView({ email }: { email: string }) {
               year: 'numeric',
             })
             return (
-              <Link
+              <article
                 key={order.id}
-                href={`/order-confirmation?order_id=${order.id}`}
-                className="block rounded-2xl border border-gray-200 bg-white p-5 transition-shadow hover:shadow-md"
+                className="rounded-2xl border border-gray-200 bg-white p-5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -109,7 +108,7 @@ async function OrdersView({ email }: { email: string }) {
                     {formatPrice(order.total_amount)}
                   </span>
                 </div>
-              </Link>
+              </article>
             )
           })}
         </div>

@@ -78,10 +78,36 @@ export interface Order {
   total_amount: number
   payment_method: 'prepaid' | 'cod'
   payment_status: 'pending' | 'paid' | 'failed' | 'refunded'
+  payment_refunded_at?: string | null
+  payment_review_required?: boolean
+  payment_review_reason?:
+    | 'late_capture_after_cancellation'
+    | 'checkout_expired_before_capture'
+    | 'inventory_shortfall_after_capture'
+    | 'coupon_reservation_lost_after_capture'
+    | 'capture_after_failed_attempt'
+    | null
   order_status: 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
   razorpay_order_id: string | null
   razorpay_payment_id: string | null
   razorpay_signature: string | null
+  currency?: string
+  coupon_code?: string | null
+  lead_coupon_code?: string | null
+  checkout_idempotency_key?: string | null
+  checkout_request_fingerprint?: string | null
+  inventory_committed_at?: string | null
+  inventory_released_at?: string | null
+  inventory_reclaimed_at?: string | null
+  inventory_reclaim_shortfall?: number
+  shipment_delivered_at?: string | null
+  fulfillment_review_required?: boolean
+  fulfillment_review_reason?:
+    | 'delivered_after_cancellation'
+    | 'return_inventory_pending'
+    | 'legacy_inventory_ledger_mismatch'
+    | 'shipment_while_ineligible'
+    | null
   notes: string | null
   // Shipping (Proship) — populated when an admin creates a shipment
   proship_order_id?: string | null
@@ -91,6 +117,15 @@ export interface Order {
   tracking_url?: string | null
   shipment_status?: string | null
   shipped_at?: string | null
+  shipment_booking_state?: 'idle' | 'booking' | 'booked' | 'failed' | 'uncertain' | 'cancelling' | 'cancel_uncertain' | 'cancelled'
+  shipment_booking_token?: string | null
+  shipment_booking_claimed_at?: string | null
+  shipment_booking_attempts?: number
+  shipment_last_error?: string | null
+  shipment_synced_at?: string | null
+  shipment_cancel_token?: string | null
+  shipment_cancel_claimed_at?: string | null
+  shipment_cancelled_at?: string | null
   created_at: string
   updated_at: string
 }

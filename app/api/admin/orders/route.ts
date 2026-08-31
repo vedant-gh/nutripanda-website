@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/utils/admin-auth'
 import { handleCors, withCors } from '@/lib/utils/api-helpers'
 import { getOrders } from '@/lib/supabase/queries'
+import { parseAdminOrderFilters } from '@/lib/orders/admin-list-input'
 
 export async function OPTIONS(request: Request) {
   return handleCors(request)
@@ -18,22 +19,26 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
-    const payment_status = searchParams.get('payment_status') ?? undefined
-    const order_status = searchParams.get('order_status') ?? undefined
-    const search = searchParams.get('search') ?? undefined
-    const limit = Number(searchParams.get('limit') ?? '20')
-    const offset = Number(searchParams.get('offset') ?? '0')
+    const filters = parseAdminOrderFilters(searchParams)
+    if (!filters.ok) {
+      return withCors(
+        NextResponse.json({ error: filters.error }, { status: 400 }),
+        request
+      )
+    }
 
-    const { orders, count } = await getOrders({
-      payment_status,
-      order_status,
-      search,
-      limit,
-      offset,
-    })
+    const { orders, count } = await getOrders(filters.value)
 
     return withCors(
-      NextResponse.json({ orders, count, limit, offset }),
+      NextResponse.json(
+        {
+          orders,
+          count,
+          limit: filters.value.limit,
+          offset: filters.value.offset,
+        },
+        { headers: { 'Cache-Control': 'private, no-store' } }
+      ),
       request
     )
   } catch (err) {

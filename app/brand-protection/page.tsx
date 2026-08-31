@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Brand Protection & Intellectual Property | NutriPanda",
+export const metadata = buildPageMetadata({
+  title: "Brand Protection & Intellectual Property",
   description:
     "Trademark, user-generated content, and prohibited-activity terms for the Nutripanda brand.",
-};
+  path: "/brand-protection",
+});
 
 export default function BrandProtectionPage() {
   return (

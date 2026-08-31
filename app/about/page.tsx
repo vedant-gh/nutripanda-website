@@ -2,22 +2,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
-import type { Metadata } from 'next'
+import { buildPageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: 'About Us | NutriPanda',
   description:
     'Learn about NutriPanda, our story, mission, and commitment to making nutrition fun, clean, and accessible for every Indian.',
-  alternates: { canonical: '/about' },
-  openGraph: {
-    type: 'website',
-    url: '/about',
-    siteName: 'NutriPanda',
-    title: 'About Us | NutriPanda',
-    description:
-      'Learn about NutriPanda, our story, mission, and commitment to making nutrition fun, clean, and accessible for every Indian.',
-  },
-}
+  path: '/about',
+})
 
 const VALUES = [
   {

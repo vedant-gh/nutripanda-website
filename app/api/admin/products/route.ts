@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/utils/admin-auth'
 import { handleCors, withCors } from '@/lib/utils/api-helpers'
 import { getAllProductsAdmin, createProduct } from '@/lib/supabase/queries'
+import { parseProductInput } from '@/lib/utils/product-input'
+import { readBoundedJsonObject } from '@/lib/utils/request-input'
+
+const MAX_PRODUCT_BODY_BYTES = 256 * 1024
+
+function noStore(response: NextResponse): NextResponse {
+  response.headers.set('Cache-Control', 'private, no-store')
+  return response
+}
 
 export async function OPTIONS(request: Request) {
   return handleCors(request)
@@ -18,7 +27,7 @@ export async function GET(request: Request) {
 
   try {
     const products = await getAllProductsAdmin()
-    return withCors(NextResponse.json({ products }), request)
+    return withCors(noStore(NextResponse.json({ products })), request)
   } catch (err) {
     console.error('Admin get products error:', err)
     return withCors(
@@ -38,36 +47,42 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json()
-
-    // Basic validation
-    if (!body.name?.trim() || !body.slug?.trim() || !body.price) {
+    const input = await readBoundedJsonObject(request, { maxBytes: MAX_PRODUCT_BODY_BYTES })
+    if (!input.ok) {
       return withCors(
-        NextResponse.json({ error: 'Name, slug, and price are required' }, { status: 400 }),
+        NextResponse.json({ error: input.error }, { status: input.status }),
+        request
+      )
+    }
+    const parsed = parseProductInput(input.value, {
+      partial: false,
+      allowInventory: true,
+    })
+    if (!parsed.ok) {
+      return withCors(
+        NextResponse.json({ error: parsed.error }, { status: 400 }),
         request
       )
     }
 
     const product = await createProduct({
-      name: body.name.trim(),
-      slug: body.slug.trim().toLowerCase(),
-      description: body.description ?? null,
-      short_description: body.short_description ?? null,
-      price: Number(body.price),
-      compare_at_price: body.compare_at_price ? Number(body.compare_at_price) : null,
-      images: body.images ?? null,
-      color_theme: body.color_theme ?? null,
-      ingredients: body.ingredients ?? null,
-      nutrition_facts: body.nutrition_facts ?? null,
-      trust_badges: body.trust_badges ?? null,
-      category: body.category ?? null,
-      is_active: body.is_active ?? true,
-      is_featured: body.is_featured ?? false,
-      is_coming_soon: body.is_coming_soon ?? false,
-      inventory_count: body.inventory_count ?? 0,
-      seo_title: body.seo_title ?? null,
-      seo_description: body.seo_description ?? null,
-    })
+      description: null,
+      short_description: null,
+      compare_at_price: null,
+      images: null,
+      color_theme: null,
+      ingredients: null,
+      nutrition_facts: null,
+      trust_badges: null,
+      category: null,
+      is_active: true,
+      is_featured: false,
+      is_coming_soon: false,
+      inventory_count: 0,
+      seo_title: null,
+      seo_description: null,
+      ...parsed.value,
+    } as Parameters<typeof createProduct>[0])
 
     return withCors(NextResponse.json({ product }, { status: 201 }), request)
   } catch (err) {

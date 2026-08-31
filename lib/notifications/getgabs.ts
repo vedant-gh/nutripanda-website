@@ -47,6 +47,7 @@ export async function sendGetGabsText(to: string, body: string): Promise<GetGabs
     const res = await fetch(`${BASE_URL}/sendservicemessages/sendmessages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(8000),
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
@@ -85,6 +86,7 @@ export async function sendGetGabsTemplate(
     const res = await fetch(`${BASE_URL}/whatsappbusiness/send-templated-message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(8000),
       body: JSON.stringify({
         api_key: apiKey,
         sender,

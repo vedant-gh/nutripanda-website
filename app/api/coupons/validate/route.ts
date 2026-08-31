@@ -6,35 +6,39 @@ import {
   computeDbCouponDiscount,
 } from '@/lib/utils/coupons'
 import { getCouponByCode } from '@/lib/supabase/queries'
+import {
+  MAX_COUPON_BODY_BYTES,
+  parsePublicCouponInput,
+} from '@/lib/coupons/input'
+import { readBoundedJsonObject } from '@/lib/utils/request-input'
+
+const RESPONSE_HEADERS = {
+  'Cache-Control': 'no-store, max-age=0',
+  'X-Content-Type-Options': 'nosniff',
+}
+
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: RESPONSE_HEADERS })
+}
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const code = (body.code ?? '').trim().toUpperCase()
-    const subtotal = body.subtotal
-
-    if (!code) {
-      return NextResponse.json(
-        { valid: false, error: 'Please enter a coupon code' },
-        { status: 400 }
-      )
+    const body = await readBoundedJsonObject(request, { maxBytes: MAX_COUPON_BODY_BYTES })
+    if (!body.ok) {
+      return json({ valid: false, error: body.error }, body.status)
     }
-
-    if (typeof subtotal !== 'number' || subtotal <= 0) {
-      return NextResponse.json(
-        { valid: false, error: 'Invalid subtotal' },
-        { status: 400 }
-      )
-    }
+    const input = parsePublicCouponInput(body.value)
+    if (!input.ok) return json({ valid: false, error: input.error }, 400)
+    const { code, subtotal } = input.value
 
     // 1. Public sitewide coupons (e.g. PANDA150)
     const publicCoupon = findPublicCoupon(code)
     if (publicCoupon) {
       const result = computePublicCouponDiscount(publicCoupon, subtotal)
       if (!result.ok) {
-        return NextResponse.json({ valid: false, error: result.error })
+        return json({ valid: false, error: result.error })
       }
-      return NextResponse.json({
+      return json({
         valid: true,
         discount: result.discount,
         code: publicCoupon.code,
@@ -46,9 +50,9 @@ export async function POST(request: Request) {
     if (adminCoupon) {
       const result = computeDbCouponDiscount(adminCoupon, subtotal)
       if (!result.ok) {
-        return NextResponse.json({ valid: false, error: result.error })
+        return json({ valid: false, error: result.error })
       }
-      return NextResponse.json({
+      return json({
         valid: true,
         discount: result.discount,
         code: adminCoupon.code,
@@ -69,17 +73,17 @@ export async function POST(request: Request) {
       .single()
 
     if (error || !coupon) {
-      return NextResponse.json({ valid: false, error: 'Invalid coupon code' })
+      return json({ valid: false, error: 'Invalid coupon code' })
     }
 
     if (coupon.is_used) {
-      return NextResponse.json({ valid: false, error: 'This coupon has already been used' })
+      return json({ valid: false, error: 'This coupon has already been used' })
     }
 
     // Calculate discount in paise
     const discount = Math.round(subtotal * (coupon.discount_percent / 100))
 
-    return NextResponse.json({
+    return json({
       valid: true,
       discount,
       code: coupon.coupon_code,
@@ -87,9 +91,6 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     console.error('Coupon validate error:', err)
-    return NextResponse.json(
-      { valid: false, error: 'Something went wrong' },
-      { status: 500 }
-    )
+    return json({ valid: false, error: 'Something went wrong' }, 500)
   }
 }

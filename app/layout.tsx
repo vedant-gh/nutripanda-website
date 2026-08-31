@@ -8,9 +8,9 @@ import {
   KEYWORDS,
   LEGAL_NAME,
   DEFAULT_OG_IMAGE,
-  organizationJsonLd,
-  websiteJsonLd,
 } from "@/lib/seo";
+import SiteAnalytics from "@/components/SiteAnalytics";
+import SiteStructuredData from "@/components/SiteStructuredData";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: DEFAULT_OG_IMAGE,
-        width: 1200,
-        height: 630,
+        width: 1024,
+        height: 939,
         alt: "NutriPanda daily wellness gummies",
       },
     ],
@@ -59,7 +59,18 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "512x512" }],
+    shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/manifest.webmanifest",
+  referrer: "strict-origin-when-cross-origin",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
@@ -68,19 +79,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
-      </head>
+    <html lang="en-IN">
       <body className="antialiased">
+        <SiteStructuredData />
         <ClientProviders>{children}</ClientProviders>
+        <SiteAnalytics />
       </body>
     </html>
   );

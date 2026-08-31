@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Contact & Grievance Redressal | NutriPanda",
+export const metadata = buildPageMetadata({
+  title: "Contact & Grievance Redressal",
   description:
     "Customer support channels and the grievance officer details for Nutripanda Life Care.",
-};
+  path: "/grievance",
+});
 
 export default function GrievancePage() {
   return (

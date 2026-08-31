@@ -1,29 +1,21 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import type { Metadata } from 'next'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import BlogCard from '@/components/blog/BlogCard'
 import { getPublishedBlogPosts } from '@/lib/supabase/queries'
+import { buildPageMetadata } from '@/lib/seo'
 import type { BlogPost } from '@/types/blog'
 
 // Always render from the live database so newly published posts appear immediately.
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'The NutriPanda Journal — Nutrition, Gummies & Everyday Wellness',
+export const metadata = buildPageMetadata({
+  title: 'The NutriPanda Journal | Nutrition & Everyday Wellness',
   description:
     'Science-backed, easy-to-read stories on nutrition, immunity, and everyday wellness from the team at NutriPanda.',
-  alternates: { canonical: '/blog' },
-  openGraph: {
-    title: 'The NutriPanda Journal',
-    description:
-      'Science-backed, easy-to-read stories on nutrition, immunity, and everyday wellness from the team at NutriPanda.',
-    type: 'website',
-    url: '/blog',
-    siteName: 'NutriPanda',
-  },
-}
+  path: '/blog',
+})
 
 function formatDate(value: string | null): string | null {
   if (!value) return null

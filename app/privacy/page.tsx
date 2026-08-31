@@ -1,17 +1,18 @@
-import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | NutriPanda",
+export const metadata = buildPageMetadata({
+  title: "Privacy Policy",
   description:
     "How Nutripanda Life Care collects, uses, and protects your personal information on nutripanda.in.",
-};
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (
     <LegalLayout
       title="Privacy Policy"
-      lastUpdated="June 2025"
+      lastUpdated="August 2026"
       intro="This Privacy Policy explains what information Nutripanda Life Care collects when you use nutripanda.in, how we use and share it, and the rights you have over your data."
     >
       <section>
@@ -20,7 +21,10 @@ export default function PrivacyPage() {
         <ul>
           <li>Name, email address, phone number, and delivery address (at checkout).</li>
           <li>Payment method type (Razorpay processes card data; we do not store card details).</li>
-          <li>Device type, browser, IP address, and pages visited (via PostHog analytics).</li>
+          <li>
+            Device type, browser, IP address, and pages visited through PostHog, Google
+            Analytics, and Ahrefs Web Analytics.
+          </li>
           <li>Purchase history and product preferences.</li>
           <li>Communications you send to us (email, WhatsApp, Instagram DMs).</li>
         </ul>
@@ -32,7 +36,10 @@ export default function PrivacyPage() {
           <li>To process and fulfil your orders.</li>
           <li>To send order confirmations, dispatch notifications, and delivery updates.</li>
           <li>To send marketing messages — only if you opt in. You can unsubscribe at any time.</li>
-          <li>To improve website performance and understand customer behaviour (PostHog).</li>
+          <li>
+            To measure website performance and understand customer behaviour using PostHog,
+            Google Analytics, and Ahrefs Web Analytics.
+          </li>
           <li>To comply with legal and regulatory obligations (FSSAI, GST, etc.).</li>
           <li>To investigate and resolve disputes or complaints.</li>
         </ul>
@@ -44,7 +51,7 @@ export default function PrivacyPage() {
         <ul>
           <li>Logistics partners (Shiprocket/courier companies) for delivery purposes.</li>
           <li>Razorpay for payment processing under their Privacy Policy.</li>
-          <li>PostHog for anonymised analytics.</li>
+          <li>PostHog, Google Analytics, and Ahrefs Web Analytics for website measurement.</li>
           <li>Legal authorities if required by a court order or applicable law.</li>
         </ul>
       </section>
@@ -87,9 +94,10 @@ export default function PrivacyPage() {
       <section>
         <h2>2.7 Cookies</h2>
         <p>
-          We use essential cookies for checkout functionality and analytical cookies
-          (PostHog) to understand site performance. You can disable analytical cookies via
-          your browser settings; this will not affect your ability to purchase.
+          We use essential cookies for checkout functionality. We also use PostHog, Google
+          Analytics, and Ahrefs Web Analytics to measure site usage and performance; these
+          services may use cookies or similar technologies. You can manage cookies in your
+          browser settings.
         </p>
       </section>
     </LegalLayout>

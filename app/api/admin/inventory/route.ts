@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/utils/admin-auth'
 import { handleCors, withCors } from '@/lib/utils/api-helpers'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
-import { logInventoryChange, getInventoryLog } from '@/lib/supabase/queries'
+import { adjustInventoryAtomic, getInventoryLog } from '@/lib/supabase/queries'
+import { hasOnlyKeys, readBoundedJsonObject } from '@/lib/utils/request-input'
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const CHANGE_TYPES = new Set(['restock', 'adjustment', 'return'])
+const MAX_BODY_BYTES = 8_192
 
 export async function OPTIONS(request: Request) {
   return handleCors(request)
@@ -56,75 +61,100 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json()
-    const { product_id, quantity_change, change_type, notes } = body as {
-      product_id: string
-      quantity_change: number
-      change_type: 'restock' | 'adjustment' | 'return'
-      notes?: string
-    }
-
-    if (!product_id || quantity_change === undefined || !change_type) {
+    const parsed = await readBoundedJsonObject(request, { maxBytes: MAX_BODY_BYTES })
+    if (!parsed.ok) {
       return withCors(
-        NextResponse.json({ error: 'product_id, quantity_change, and change_type are required' }, { status: 400 }),
+        NextResponse.json({ error: parsed.error }, { status: parsed.status }),
+        request
+      )
+    }
+    const body = parsed.value
+    if (!hasOnlyKeys(body, ['product_id', 'quantity_change', 'change_type', 'notes'])) {
+      return withCors(
+        NextResponse.json({ error: 'Request contains unsupported fields' }, { status: 400 }),
+        request
+      )
+    }
+    const productId = typeof body.product_id === 'string' ? body.product_id.trim() : ''
+    const quantityChange = body.quantity_change
+    const changeType = typeof body.change_type === 'string' ? body.change_type : ''
+    const notes = typeof body.notes === 'string' ? body.notes.trim() : undefined
+
+    if (!UUID_PATTERN.test(productId)) {
+      return withCors(
+        NextResponse.json({ error: 'A valid product_id is required' }, { status: 400 }),
+        request
+      )
+    }
+    if (
+      !Number.isSafeInteger(quantityChange) ||
+      Number(quantityChange) === 0 ||
+      Math.abs(Number(quantityChange)) > 100_000
+    ) {
+      return withCors(
+        NextResponse.json(
+          { error: 'quantity_change must be a non-zero integer between -100000 and 100000' },
+          { status: 400 }
+        ),
+        request
+      )
+    }
+    if (!CHANGE_TYPES.has(changeType)) {
+      return withCors(
+        NextResponse.json(
+          { error: 'change_type must be restock, adjustment, or return' },
+          { status: 400 }
+        ),
+        request
+      )
+    }
+    if (body.notes !== undefined && typeof body.notes !== 'string') {
+      return withCors(
+        NextResponse.json({ error: 'notes must be text' }, { status: 400 }),
+        request
+      )
+    }
+    if (notes && notes.length > 1000) {
+      return withCors(
+        NextResponse.json({ error: 'notes cannot exceed 1000 characters' }, { status: 400 }),
         request
       )
     }
 
-    const validTypes = ['restock', 'adjustment', 'return']
-    if (!validTypes.includes(change_type)) {
-      return withCors(
-        NextResponse.json({ error: 'Invalid change_type. Must be: restock, adjustment, or return' }, { status: 400 }),
-        request
-      )
-    }
+    const result = await adjustInventoryAtomic({
+      product_id: productId,
+      quantity_change: Number(quantityChange),
+      change_type: changeType as 'restock' | 'adjustment' | 'return',
+      notes,
+    })
 
-    const supabase = getSupabaseAdmin()
-
-    // Get current product
-    const { data: product, error: productError } = await supabase
-      .from('products')
-      .select('id, name, inventory_count')
-      .eq('id', product_id)
-      .single()
-
-    if (productError || !product) {
+    return withCors(
+      NextResponse.json(result),
+      request
+    )
+  } catch (err) {
+    const message = err instanceof Error ? err.message : ''
+    if (message.includes('PRODUCT_NOT_FOUND')) {
       return withCors(
         NextResponse.json({ error: 'Product not found' }, { status: 404 }),
         request
       )
     }
-
-    const previousStock = product.inventory_count
-    const newStock = Math.max(0, previousStock + quantity_change)
-
-    // Update stock
-    await supabase
-      .from('products')
-      .update({ inventory_count: newStock })
-      .eq('id', product_id)
-
-    // Log change
-    await logInventoryChange({
-      product_id,
-      product_name: product.name,
-      change_type,
-      quantity_change,
-      previous_stock: previousStock,
-      new_stock: newStock,
-      notes,
-    })
-
-    return withCors(
-      NextResponse.json({
-        product_id,
-        previous_stock: previousStock,
-        new_stock: newStock,
-        change: quantity_change,
-      }),
-      request
-    )
-  } catch (err) {
+    if (message.includes('INSUFFICIENT_STOCK')) {
+      return withCors(
+        NextResponse.json({ error: 'Inventory cannot be reduced below zero' }, { status: 409 }),
+        request
+      )
+    }
+    if (message.includes('ACTIVE_RESERVATIONS_EXCEED_NEW_STOCK')) {
+      return withCors(
+        NextResponse.json(
+          { error: 'Inventory cannot be reduced below active prepaid reservations' },
+          { status: 409 }
+        ),
+        request
+      )
+    }
     console.error('Admin inventory adjustment error:', err)
     return withCors(
       NextResponse.json({ error: 'Failed to adjust inventory' }, { status: 500 }),

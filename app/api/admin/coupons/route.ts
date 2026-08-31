@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/utils/admin-auth'
 import { handleCors, withCors } from '@/lib/utils/api-helpers'
-import { getAllCouponsAdmin, createCoupon, type CouponInput } from '@/lib/supabase/queries'
+import { getAllCouponsAdmin, createCoupon } from '@/lib/supabase/queries'
+import { MAX_COUPON_BODY_BYTES, parseCouponInput } from '@/lib/coupons/input'
+import { readBoundedJsonObject } from '@/lib/utils/request-input'
 
 export async function OPTIONS(request: Request) {
   return handleCors(request)
@@ -18,7 +20,10 @@ export async function GET(request: Request) {
 
   try {
     const coupons = await getAllCouponsAdmin()
-    return withCors(NextResponse.json({ coupons }), request)
+    return withCors(
+      NextResponse.json({ coupons }, { headers: { 'Cache-Control': 'private, no-store' } }),
+      request
+    )
   } catch (err) {
     console.error('Admin list coupons error:', err)
     return withCors(
@@ -38,49 +43,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as CouponInput
-    const code = typeof body.code === 'string' ? body.code.trim() : ''
-    const discountType = body.discount_type
-    const value = Number(body.discount_value)
-
-    if (!code) {
-      return withCors(
-        NextResponse.json({ error: 'Coupon code is required' }, { status: 400 }),
-        request
-      )
+    const body = await readBoundedJsonObject(request, { maxBytes: MAX_COUPON_BODY_BYTES })
+    if (!body.ok) {
+      return withCors(NextResponse.json({ error: body.error }, { status: body.status }), request)
     }
-    if (discountType !== 'percent' && discountType !== 'fixed') {
-      return withCors(
-        NextResponse.json({ error: 'Invalid discount type' }, { status: 400 }),
-        request
-      )
-    }
-    if (!Number.isFinite(value) || value <= 0) {
-      return withCors(
-        NextResponse.json({ error: 'Discount value must be greater than 0' }, { status: 400 }),
-        request
-      )
-    }
-    if (discountType === 'percent' && value > 100) {
-      return withCors(
-        NextResponse.json({ error: 'Percentage cannot exceed 100' }, { status: 400 }),
-        request
-      )
+    const input = parseCouponInput(body.value, 'create')
+    if (!input.ok) {
+      return withCors(NextResponse.json({ error: input.error }, { status: 400 }), request)
     }
 
-    const coupon = await createCoupon({
-      code,
-      discount_type: discountType,
-      discount_value: Math.round(value),
-      min_subtotal: Math.max(0, Math.round(body.min_subtotal ?? 0)),
-      max_discount:
-        body.max_discount != null ? Math.max(0, Math.round(body.max_discount)) : null,
-      is_active: body.is_active ?? true,
-      expires_at: body.expires_at ?? null,
-      description: body.description ?? null,
-    })
+    const coupon = await createCoupon(input.value)
 
-    return withCors(NextResponse.json({ coupon }, { status: 201 }), request)
+    return withCors(
+      NextResponse.json(
+        { coupon },
+        { status: 201, headers: { 'Cache-Control': 'private, no-store' } }
+      ),
+      request
+    )
   } catch (err) {
     const e = err as { code?: string }
     if (e?.code === '23505') {

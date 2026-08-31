@@ -49,7 +49,6 @@ function Block({ block }: { block: BlogBlock }) {
       return (
         <figure className={wrapperClass}>
           <div className="relative w-full overflow-hidden rounded-2xl bg-[#f3f3f3]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <Image
               src={block.url}
               alt={block.alt ?? ''}

@@ -62,45 +62,34 @@ export function trackCheckoutStarted(itemCount: number, cartTotal: number) {
   })
 }
 
-export function trackPaymentInitiated(orderId: string, amount: number) {
+export function trackPaymentInitiated(amount: number) {
   posthog.capture('payment_initiated', {
-    order_id: orderId,
     amount_paise: amount,
     amount_inr: amount / 100,
   })
 }
 
 export function trackPaymentCompleted(order: {
-  order_id: string
-  order_number: string
   total_amount: number
   item_count: number
-  customer_email: string
+  payment_method: 'prepaid' | 'cod'
 }) {
-  // Identify user by email
-  posthog.identify(order.customer_email, {
-    email: order.customer_email,
-  })
-
   posthog.capture('payment_completed', {
-    order_id: order.order_id,
-    order_number: order.order_number,
     total_paise: order.total_amount,
     total_inr: order.total_amount / 100,
     item_count: order.item_count,
+    payment_method: order.payment_method,
   })
 }
 
-export function trackPaymentFailed(orderId: string, reason?: string) {
+export function trackPaymentFailed(reason?: string) {
   posthog.capture('payment_failed', {
-    order_id: orderId,
     reason: reason || 'unknown',
   })
 }
 
-export function trackCouponApplied(code: string, discountPercent: number) {
+export function trackCouponApplied(discountPercent: number) {
   posthog.capture('coupon_applied', {
-    coupon_code: code,
     discount_percent: discountPercent,
   })
 }

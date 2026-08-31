@@ -16,6 +16,14 @@ import { formatPrice } from "@/lib/utils/format";
 // (ChatGPT, Perplexity, Gemini, Claude). Spec: https://llmstxt.org
 export const revalidate = 3600;
 
+function oneLine(value: string | null | undefined): string {
+  return (value ?? "").replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
+}
+
+function markdownLabel(value: string): string {
+  return oneLine(value).replace(/[\\\[\]]/g, "\\$&");
+}
+
 export async function GET() {
   const lines: string[] = [];
 
@@ -38,9 +46,9 @@ export async function GET() {
     if (active.length) {
       lines.push("## Products (available now)");
       for (const p of active) {
-        const desc = p.short_description ?? p.description ?? "";
+        const desc = oneLine(p.short_description ?? p.description);
         lines.push(
-          `- [${p.name}](${SITE_URL}/products/${p.slug}): ${desc} Price: ${formatPrice(
+          `- [${markdownLabel(p.name)}](${SITE_URL}/products/${encodeURIComponent(p.slug)}): ${desc} Price: ${formatPrice(
             p.price
           )}.`
         );
@@ -52,7 +60,7 @@ export async function GET() {
       lines.push("## Products (coming soon)");
       for (const p of coming) {
         lines.push(
-          `- [${p.name}](${SITE_URL}/products/${p.slug}): ${p.short_description ?? ""}`.trim()
+          `- [${markdownLabel(p.name)}](${SITE_URL}/products/${encodeURIComponent(p.slug)}): ${oneLine(p.short_description)}`.trim()
         );
       }
       lines.push("");
@@ -62,7 +70,7 @@ export async function GET() {
       lines.push("## Blog / Journal");
       for (const post of posts) {
         lines.push(
-          `- [${post.title}](${SITE_URL}/blog/${post.slug}): ${post.excerpt ?? ""}`.trim()
+          `- [${markdownLabel(post.title)}](${SITE_URL}/blog/${encodeURIComponent(post.slug)}): ${oneLine(post.excerpt)}`.trim()
         );
       }
       lines.push("");

@@ -170,6 +170,8 @@ export interface ProshipShipment {
   currentStatus: string
   courierParentName: string
   labelUrl: string
+  trackingUrl?: string | null
+  tracking_url?: string | null
   invoiceUrl: string
   invoiceNumber: string
   invoiceValue: number

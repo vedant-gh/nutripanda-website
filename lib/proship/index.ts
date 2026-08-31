@@ -25,9 +25,26 @@ import type {
   ServiceabilityOption,
   ServiceabilityQuery,
 } from './types'
+import { parcelProfileForItems } from './package'
+import { parseShipmentLookupResponse } from './policy'
 
 export { ProshipError } from './client'
+export { parseShipmentLookupResponse } from './policy'
 export type * from './types'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function assertSuccessfulEnvelope<T>(
+  value: ProshipEnvelope<T>,
+  operation: string
+): ProshipEnvelope<T> {
+  if (!isRecord(value) || !isRecord(value.meta) || value.meta.success !== true || !('result' in value)) {
+    throw new Error(`Shipping provider returned an invalid ${operation} response`)
+  }
+  return value
+}
 
 // ── Serviceability ──────────────────────────────────────────────────────────
 
@@ -40,7 +57,13 @@ export async function checkServiceability(
     `/api/tools/serviceabilityExtN?merchantId=${encodeURIComponent(merchantId)}`,
     { method: 'POST', body: JSON.stringify(queries) }
   )
-  return res.result ?? []
+  const envelope = assertSuccessfulEnvelope(res, 'serviceability')
+  if (!Array.isArray(envelope.result)) {
+    throw new Error('Shipping provider returned an invalid serviceability response')
+  }
+  return envelope.result.filter((option): option is ServiceabilityOption => {
+    return isRecord(option) && isRecord(option.serviceable)
+  })
 }
 
 /**
@@ -89,7 +112,17 @@ export async function createForwardShipment(
     method: 'POST',
     body: JSON.stringify(payload),
   })
-  return res.result
+  const envelope = assertSuccessfulEnvelope(res, 'shipment creation')
+  if (
+    !isRecord(envelope.result)
+    || typeof envelope.result.awb_number !== 'string'
+    || !envelope.result.awb_number.trim()
+    || typeof envelope.result.orderId !== 'string'
+    || !envelope.result.orderId.trim()
+  ) {
+    throw new Error('Shipping provider returned an invalid shipment creation response')
+  }
+  return envelope.result
 }
 
 /** Fetch shipment(s) by our reference (order number), Proship orderId, or AWB(s). */
@@ -102,17 +135,37 @@ export async function getShipment(query: {
   if (query.reference) qs.set('reference', query.reference)
   if (query.orderId) qs.set('orderId', query.orderId)
   if (query.waybills) qs.set('waybills', query.waybills)
-  return proshipFetch<ProshipShipment[]>(`/api/order/getOrderExt?${qs.toString()}`, {
+  const result = await proshipFetch<ProshipShipment[]>(`/api/order/getOrderExt?${qs.toString()}`, {
     method: 'GET',
   })
+  return parseShipmentLookupResponse(result) as unknown as ProshipShipment[]
 }
 
 /** Cancel a shipment by AWB / waybill number. */
 export async function cancelShipment(waybill: string): Promise<unknown> {
-  return proshipFetch('/api/order/cancel_order', {
+  if (!waybill.trim() || waybill.length > 100) {
+    throw new Error('Invalid AWB number')
+  }
+  const result = await proshipFetch<ProshipEnvelope<unknown>>('/api/order/cancel_order', {
     method: 'POST',
     body: JSON.stringify({ waybill }),
   })
+
+  // A transport-level 2xx is not proof that the parcel was stopped. Only the
+  // provider's explicit positive envelope may unlock a refund/local cancel.
+  const envelope = assertSuccessfulEnvelope(result, 'shipment cancellation')
+  if (envelope.result === null || envelope.result === undefined || envelope.result === false) {
+    throw new Error('Shipping provider returned an invalid shipment cancellation response')
+  }
+  if (isRecord(envelope.result)) {
+    const returnedWaybill = envelope.result.waybill
+      ?? envelope.result.awb_number
+      ?? envelope.result.awbNumber
+    if (returnedWaybill !== undefined && returnedWaybill !== waybill) {
+      throw new Error('Shipping provider returned a mismatched cancellation reference')
+    }
+  }
+  return envelope.result
 }
 
 /** Generate a manifest for one or more AWBs (hands the parcels over to the courier). */
@@ -182,9 +235,9 @@ export function orderToForwardShipment(
   const fullAddress = [addr.line1, addr.line2].filter(Boolean).join(', ')
   const addressLine = [fullAddress, addr.city, addr.state].filter(Boolean).join(', ')
 
-  const totalUnits = order.items.reduce((n, item) => n + item.quantity, 0)
-  const perItemWeightGrams = opts?.perItemWeightGrams ?? 150
-  const dims = opts?.parcelDimensionsCm ?? { length: 15, breadth: 12, height: 8 }
+  const parcel = parcelProfileForItems(order.items)
+  const perItemWeightGrams = opts?.perItemWeightGrams ?? parcel.weightGrams / parcel.totalUnits
+  const dims = opts?.parcelDimensionsCm ?? parcel.dimensionsCm
   const pickup = opts?.pickup ?? pickupFromEnv()
   const warehouseName = opts?.warehouseName ?? process.env.PROSHIP_PICKUP_WAREHOUSE
   const hsn = process.env.PROSHIP_DEFAULT_HSN || '21069099'
@@ -228,7 +281,7 @@ export function orderToForwardShipment(
         item_length: dims.length,
         item_breadth: dims.breadth,
         item_height: dims.height,
-        item_weight: perItemWeightGrams * totalUnits, // grams
+        item_weight: perItemWeightGrams * parcel.totalUnits, // grams
       },
     ],
     delivery_details,

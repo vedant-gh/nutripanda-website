@@ -18,9 +18,9 @@ export default function ProductCards({ products }: { products: Product[] }) {
           <h2 className="font-heading text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
             Best Sellers
           </h2>
-          <a href="/products" className="hidden text-sm font-medium text-gray-500 transition-colors hover:text-gray-900 sm:block">
+          <Link href="/products" className="hidden text-sm font-medium text-gray-500 transition-colors hover:text-gray-900 sm:block">
             View all &rarr;
-          </a>
+          </Link>
         </div>
 
         {/* Product grid */}

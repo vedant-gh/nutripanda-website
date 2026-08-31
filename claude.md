@@ -20,7 +20,7 @@ E-commerce website for NutriPanda, an Indian nutrition gummies startup. 2 produc
 - **Next.js API routes** (`app/api/`) handle all server-side logic: Razorpay payment creation/verification/webhooks, email/WhatsApp notifications. No separate backend server. Frontend never talks to Razorpay directly for sensitive operations.
 - **Admin dashboard** is a **separate Next.js project** (`nutri-panda-dashboard`) that consumes admin API routes from this project via CORS. Hosted separately.
 - **CORS** is configured in `lib/utils/api-helpers.ts` for cross-origin admin dashboard access. Allowed origins include localhost dev ports and `ADMIN_DASHBOARD_URL` env var.
-- **Rate limiting** on admin auth (5 failed attempts in 15 min → 30 min lockout) via in-memory store in `lib/utils/rate-limit.ts`.
+- **Rate limiting** on admin auth is durable in Supabase and keyed with HMAC-hashed IP/account identifiers.
 - Cart state managed with **Zustand** + localStorage persistence.
 - All prices stored as integers (paise). Display as ₹ with 2 decimal places.
 

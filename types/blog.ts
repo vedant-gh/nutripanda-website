@@ -115,3 +115,19 @@ export interface BlogPost {
   created_at: string
   updated_at: string
 }
+
+/** Fields the dashboard is allowed to write through the blog API. */
+export interface BlogPostInput {
+  slug: string
+  title: string
+  excerpt?: string | null
+  cover_image_url?: string | null
+  content: BlogBlock[]
+  author?: string | null
+  tags?: string[]
+  category?: string | null
+  status?: 'draft' | 'published'
+  is_featured?: boolean
+  seo_title?: string | null
+  seo_description?: string | null
+}

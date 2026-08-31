@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -53,23 +52,13 @@ function TrustStrip() {
 }
 
 export default function HeroSection() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   return (
     <section className="relative min-h-[calc(100dvh-64px)] w-full overflow-hidden bg-[#f7fdf6]">
       {/* Main content grid */}
       <div className="relative z-10 mx-auto grid min-h-[calc(100dvh-64px)] max-w-7xl grid-cols-1 items-center px-6 pb-20 pt-12 sm:px-8 lg:grid-cols-2 lg:gap-8 lg:px-12 lg:pb-24 lg:pt-0">
         {/* Left: Copy */}
         <div
-          className={`flex flex-col items-center text-center transition-all duration-700 ease-out lg:items-start lg:text-left ${
-            mounted
-              ? "translate-y-0 opacity-100"
-              : "translate-y-6 opacity-0"
-          }`}
+          className="flex flex-col items-center text-center lg:items-start lg:text-left"
         >
           {/* Static badge */}
           <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#DCFDCC] px-4 py-1.5">
@@ -139,11 +128,7 @@ export default function HeroSection() {
 
         {/* Right: Panda */}
         <div
-          className={`relative mt-8 flex items-end justify-center lg:mt-0 lg:items-center transition-all duration-700 delay-200 ease-out ${
-            mounted
-              ? "translate-y-0 opacity-100"
-              : "translate-y-10 opacity-0"
-          }`}
+          className="relative mt-8 flex items-end justify-center lg:mt-0 lg:items-center"
         >
           <div className="relative">
             <Image

@@ -1,5 +1,7 @@
-// Central SEO/GEO constants + JSON-LD builders for NutriPanda.
-// Used by the root layout, robots, sitemap, llms.txt and page-level metadata.
+import type { Metadata } from 'next'
+
+// Central SEO/GEO constants + metadata/JSON-LD builders for NutriPanda.
+// Keep SEO URL and brand data here so crawlers never receive conflicting values.
 
 export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || 'https://nutripanda.in'
@@ -33,9 +35,64 @@ export const DEFAULT_OG_IMAGE = `${SITE_URL}/assets/hero.png`
 export const LOGO_URL = `${SITE_URL}/assets/logo-main.png`
 
 /** Absolute URL for a site-relative path. */
-export function absoluteUrl(path = ''): string {
-  if (!path) return SITE_URL
-  return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`
+export function absoluteUrl(path = '/'): string {
+  return new URL(path, `${SITE_URL}/`).toString()
+}
+
+export interface SocialImage {
+  url: string
+  alt: string
+  width?: number
+  height?: number
+}
+
+export interface PageMetadataOptions {
+  /** A complete, human-readable title. The helper marks it absolute. */
+  title: string
+  description: string
+  path: string
+  image?: SocialImage
+}
+
+export const DEFAULT_SOCIAL_IMAGE: SocialImage = {
+  url: DEFAULT_OG_IMAGE,
+  width: 1024,
+  height: 939,
+  alt: 'NutriPanda nutrition gummies',
+}
+
+/** Build consistent canonical, Open Graph, and X/Twitter metadata for a page. */
+export function buildPageMetadata({
+  title,
+  description,
+  path,
+  image = DEFAULT_SOCIAL_IMAGE,
+}: PageMetadataOptions): Metadata {
+  const canonicalUrl = absoluteUrl(path)
+  const socialImage = { ...image, url: absoluteUrl(image.url) }
+
+  return {
+    // Callers pass complete titles (many include the brand), so do not apply the
+    // root title template a second time.
+    title: { absolute: title },
+    description,
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      type: 'website',
+      locale: 'en_IN',
+      url: canonicalUrl,
+      siteName: SITE_NAME,
+      title,
+      description,
+      images: [socialImage],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [socialImage.url],
+    },
+  }
 }
 
 // ── Site-wide JSON-LD ──

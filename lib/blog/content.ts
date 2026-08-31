@@ -60,8 +60,27 @@ export function estimateReadingTime(blocks: BlogBlock[]): number {
 
 /** Extract a YouTube embed URL from a watch/share/embed link. */
 export function youtubeEmbedUrl(url: string): string | null {
-  const m = String(url).match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
-  )
-  return m ? `https://www.youtube.com/embed/${m[1]}` : null
+  try {
+    const parsed = new URL(String(url).trim())
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return null
+
+    const hostname = parsed.hostname.toLowerCase()
+    let videoId: string | null = null
+
+    if (hostname === 'youtu.be' || hostname === 'www.youtu.be') {
+      videoId = parsed.pathname.split('/').filter(Boolean)[0] ?? null
+    } else if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) {
+      videoId = parsed.searchParams.get('v')
+      if (!videoId) {
+        const pathMatch = parsed.pathname.match(/^\/(?:embed|shorts)\/([^/]+)$/)
+        videoId = pathMatch?.[1] ?? null
+      }
+    }
+
+    return videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)
+      ? `https://www.youtube.com/embed/${videoId}`
+      : null
+  } catch {
+    return null
+  }
 }

@@ -7,8 +7,8 @@ import Footer from '@/components/Footer'
 import ProductHero from '@/components/product-detail/ProductHero'
 import TrackProductView from '@/components/product-detail/TrackProductView'
 import { getProductBySlug, getAllProducts } from '@/lib/supabase/queries'
+import { absoluteUrl, buildPageMetadata } from '@/lib/seo'
 import { formatPrice } from '@/lib/utils/format'
-import { SITE_URL } from '@/lib/seo'
 import type { Product, Ingredient } from '@/types/supabase'
 
 // Always render from the live database so product/status changes show immediately.
@@ -95,32 +95,27 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const product = await getProductBySlug(slug)
-  if (!product) return { title: 'Product Not Found' }
-
-  const canonical = `/products/${slug}`
-  const description =
-    product.seo_description ?? product.short_description ?? product.description ?? undefined
-  const image = product.images?.[0]
-
-  return {
-    title: product.seo_title ?? `${product.name} | NutriPanda`,
-    description,
-    alternates: { canonical },
-    openGraph: {
-      type: 'website',
-      url: `${SITE_URL}${canonical}`,
-      siteName: 'NutriPanda',
-      title: product.seo_title ?? product.name,
-      description,
-      images: image ? [{ url: image, alt: product.name }] : undefined,
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: product.seo_title ?? product.name,
-      description,
-      images: image ? [image] : undefined,
-    },
+  if (!product) {
+    return {
+      title: { absolute: 'Product Not Found | NutriPanda' },
+      robots: { index: false, follow: false },
+    }
   }
+
+  const title = product.seo_title ?? `${product.name} | NutriPanda`
+  const description =
+    product.seo_description ??
+    product.short_description ??
+    product.description ??
+    `Shop ${product.name} from NutriPanda, clean nutrition gummies made in India.`
+  const productImage = product.images?.find((image) => !image.includes('placehold.co'))
+
+  return buildPageMetadata({
+    title,
+    description,
+    path: `/products/${encodeURIComponent(product.slug)}`,
+    image: productImage ? { url: productImage, alt: product.name } : undefined,
+  })
 }
 
 // ── Sub-sections ──
@@ -242,24 +237,24 @@ function RelatedProductCard({ product }: { product: Product }) {
 // ── JSON-LD Structured Data ──
 
 function ProductJsonLd({ product }: { product: Product }) {
-  const url = `${SITE_URL}/products/${product.slug}`
-
+  const productUrl = absoluteUrl(`/products/${encodeURIComponent(product.slug)}`)
+  const productImages = product.images?.filter((image) => !image.includes('placehold.co')) ?? []
   const productJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
+    url: productUrl,
     name: product.name,
     description: product.short_description ?? product.description ?? '',
-    image: product.images?.length ? product.images : undefined,
+    image: productImages.length > 0 ? productImages : undefined,
     sku: product.slug,
     category: product.category ?? 'Wellness Supplements',
-    url,
     brand: {
       '@type': 'Brand',
       name: 'NutriPanda',
     },
     offers: {
       '@type': 'Offer',
-      url,
+      url: productUrl,
       price: (product.price / 100).toFixed(2),
       priceCurrency: 'INR',
       priceValidUntil: '2027-12-31',
@@ -279,9 +274,24 @@ function ProductJsonLd({ product }: { product: Product }) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Products', item: `${SITE_URL}/products` },
-      { '@type': 'ListItem', position: 3, name: product.name, item: url },
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: absoluteUrl('/'),
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Products',
+        item: absoluteUrl('/products'),
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: product.name,
+        item: productUrl,
+      },
     ],
   }
 
@@ -289,11 +299,15 @@ function ProductJsonLd({ product }: { product: Product }) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productJsonLd).replace(/</g, '\\u003c'),
+        }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, '\\u003c'),
+        }}
       />
     </>
   )
@@ -323,7 +337,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
       {/* Breadcrumbs */}
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <nav className="text-xs text-gray-400 sm:text-sm">
+        <nav aria-label="Breadcrumb" className="text-xs text-gray-400 sm:text-sm">
           <Link href="/" className="hover:text-gray-600 transition-colors">Home</Link>
           <span className="mx-2">/</span>
           <Link href="/products" className="hover:text-gray-600 transition-colors">Products</Link>

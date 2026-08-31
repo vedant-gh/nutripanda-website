@@ -26,12 +26,6 @@ export default function LoginForm() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Something went wrong')
       setSent(true)
-      if (data.dev) {
-        toast('Dev mode: open the sign-in link printed in your server terminal', {
-          icon: '🔑',
-          duration: 6000,
-        })
-      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong')
     } finally {

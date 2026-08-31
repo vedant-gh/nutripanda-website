@@ -1,23 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { getActivePublicCoupon } from '@/lib/utils/coupons'
 
 const DISMISS_KEY = 'nutripanda-promo-dismissed'
+const PROMO_STORE_EVENT = 'nutripanda-promo-store-change'
+
+function subscribeToPromoStore(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange)
+  window.addEventListener(PROMO_STORE_EVENT, onStoreChange)
+  return () => {
+    window.removeEventListener('storage', onStoreChange)
+    window.removeEventListener(PROMO_STORE_EVENT, onStoreChange)
+  }
+}
 
 export default function AnnouncementBar() {
   const coupon = getActivePublicCoupon()
-  const [visible, setVisible] = useState(false)
   const [copied, setCopied] = useState(false)
+  const dismissed = useSyncExternalStore(
+    subscribeToPromoStore,
+    () => Boolean(coupon && localStorage.getItem(`${DISMISS_KEY}:${coupon.code}`)),
+    () => false
+  )
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || !coupon) return
-    // Re-show if the promoted code changes (the key includes the code).
-    if (localStorage.getItem(`${DISMISS_KEY}:${coupon.code}`)) return
-    setVisible(true)
-  }, [coupon])
-
-  if (!coupon || !visible) return null
+  if (!coupon || dismissed) return null
 
   async function copyCode() {
     try {
@@ -30,9 +37,9 @@ export default function AnnouncementBar() {
   }
 
   function dismiss() {
-    setVisible(false)
     try {
       localStorage.setItem(`${DISMISS_KEY}:${coupon!.code}`, '1')
+      window.dispatchEvent(new Event(PROMO_STORE_EVENT))
     } catch {}
   }
 

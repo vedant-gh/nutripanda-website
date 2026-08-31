@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Creator & Influencer Partnership Terms | NutriPanda",
+export const metadata = buildPageMetadata({
+  title: "Creator & Influencer Partnership Terms",
   description:
     "Disclosure requirements and partnership terms for creators and influencers working with Nutripanda.",
-};
+  path: "/creator-terms",
+});
 
 export default function CreatorTermsPage() {
   return (

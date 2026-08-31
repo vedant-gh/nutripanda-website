@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Terms & Conditions | NutriPanda",
+export const metadata = buildPageMetadata({
+  title: "Terms & Conditions",
   description:
     "Terms & Conditions of use for nutripanda.in, operated by Nutripanda Life Care.",
-};
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

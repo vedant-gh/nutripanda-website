@@ -1,62 +1,91 @@
-import { createHmac, timingSafeEqual } from 'crypto'
+import 'server-only'
 
-// Lightweight, stateless customer auth for the "My Orders" magic-link flow.
-// Tokens are HMAC-signed (no DB/session table needed). Falls back to the
-// service-role key as the signing secret if CUSTOMER_AUTH_SECRET isn't set.
-const SECRET =
-  process.env.CUSTOMER_AUTH_SECRET ??
-  process.env.SUPABASE_SERVICE_ROLE_KEY ??
-  'nutripanda-dev-secret'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import {
+  CUSTOMER_AUTH_MINIMUM_SECRET_LENGTH,
+  CUSTOMER_SESSION_MAX_AGE_SECONDS,
+  createMagicTokenWithSecret,
+  createSessionTokenWithSecret,
+  hashCustomerEmail,
+  hashCustomerMagicToken,
+  verifyMagicTokenWithSecret,
+  verifySessionTokenWithSecret,
+} from '@/lib/customer-auth-core'
 
 export const SESSION_COOKIE = 'np_customer_session'
-const MAGIC_TTL = 15 * 60 // 15 minutes
-export const SESSION_MAX_AGE = 30 * 24 * 60 * 60 // 30 days
+export const SESSION_MAX_AGE = CUSTOMER_SESSION_MAX_AGE_SECONDS
 
-type Purpose = 'magic' | 'session'
-
-interface TokenPayload {
-  email: string
-  purpose: Purpose
-  exp: number
+function getCustomerAuthSecret(): string | null {
+  const secret = process.env.CUSTOMER_AUTH_SECRET
+  return secret && secret.length >= CUSTOMER_AUTH_MINIMUM_SECRET_LENGTH ? secret : null
 }
 
-function sign(body: string): string {
-  return createHmac('sha256', SECRET).update(body).digest('base64url')
+export function hasCustomerAuthSecret(): boolean {
+  return getCustomerAuthSecret() !== null
 }
 
-function makeToken(email: string, purpose: Purpose, ttl: number): string {
-  const payload: TokenPayload = {
-    email: email.trim().toLowerCase(),
-    purpose,
-    exp: Math.floor(Date.now() / 1000) + ttl,
+function requireCustomerAuthSecret(): string {
+  const secret = getCustomerAuthSecret()
+  if (!secret) {
+    throw new Error(
+      `CUSTOMER_AUTH_SECRET must be at least ${CUSTOMER_AUTH_MINIMUM_SECRET_LENGTH} characters`
+    )
   }
-  const body = Buffer.from(JSON.stringify(payload)).toString('base64url')
-  return `${body}.${sign(body)}`
+  return secret
 }
 
-// Returns the verified email, or null if the token is missing/tampered/expired
-// or signed for a different purpose.
-function readToken(token: string | undefined, purpose: Purpose): string | null {
-  if (!token) return null
-  const [body, providedSig] = token.split('.')
-  if (!body || !providedSig) return null
+/**
+ * Create a cryptographically unique magic link and persist only keyed/digest
+ * identifiers. The bearer token itself is never written to Supabase.
+ */
+export async function createMagicToken(email: string): Promise<string> {
+  const secret = requireCustomerAuthSecret()
+  const issued = createMagicTokenWithSecret(email, secret)
+  const { error } = await getSupabaseAdmin().rpc('issue_customer_magic_token', {
+    p_token_hash: issued.tokenHash,
+    p_email_hash: issued.emailHash,
+    p_expires_at: new Date(issued.expiresAt * 1000).toISOString(),
+  })
 
-  const expectedSig = sign(body)
-  const a = Buffer.from(providedSig)
-  const b = Buffer.from(expectedSig)
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null
-
-  try {
-    const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as TokenPayload
-    if (payload.purpose !== purpose) return null
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null
-    return payload.email
-  } catch {
-    return null
-  }
+  if (error) throw error
+  return issued.token
 }
 
-export const createMagicToken = (email: string) => makeToken(email, 'magic', MAGIC_TTL)
-export const verifyMagicToken = (token: string | undefined) => readToken(token, 'magic')
-export const createSessionToken = (email: string) => makeToken(email, 'session', SESSION_MAX_AGE)
-export const verifySessionToken = (token: string | undefined) => readToken(token, 'session')
+/**
+ * Verify and atomically consume a magic link. Concurrent requests for the same
+ * token cannot both succeed because the database update claims the unused row.
+ */
+export async function consumeMagicToken(token: string | undefined): Promise<string | null> {
+  const secret = getCustomerAuthSecret()
+  if (!secret) return null
+
+  const verified = verifyMagicTokenWithSecret(token, secret)
+  if (!verified || !token) return null
+
+  const { data, error } = await getSupabaseAdmin().rpc('consume_customer_magic_token', {
+    p_token_hash: hashCustomerMagicToken(token),
+    p_email_hash: hashCustomerEmail(verified.email, secret),
+  })
+
+  if (error) throw error
+  return data === true ? verified.email : null
+}
+
+export function createSessionToken(email: string): string {
+  return createSessionTokenWithSecret(email, requireCustomerAuthSecret())
+}
+
+export function verifySessionToken(token: string | undefined): string | null {
+  const secret = getCustomerAuthSecret()
+  if (!secret) return null
+  return verifySessionTokenWithSecret(token, secret)?.email ?? null
+}
+
+export const customerSessionCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/account',
+  maxAge: SESSION_MAX_AGE,
+  priority: 'high',
+} as const
