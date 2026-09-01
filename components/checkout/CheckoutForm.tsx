@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import type { ReactNode } from 'react'
 import { validateEmail, validatePhone, validatePincode } from '@/lib/utils/validators'
 import { INDIAN_STATES } from '@/lib/utils/constants'
 import { Loader2, Lock, Package } from 'lucide-react'
@@ -24,7 +23,6 @@ interface CheckoutFormProps {
   paymentMethod: 'prepaid' | 'cod'
   onPaymentMethodChange: (method: 'prepaid' | 'cod') => void
   codFee: number // in paise; ₹20 = 2000
-  verificationSlot?: ReactNode
 }
 
 type FormErrors = Partial<Record<keyof CheckoutFormData, string>>
@@ -35,7 +33,6 @@ export default function CheckoutForm({
   paymentMethod,
   onPaymentMethodChange,
   codFee,
-  verificationSlot,
 }: CheckoutFormProps) {
   const [form, setForm] = useState<CheckoutFormData>({
     name: '',
@@ -284,8 +281,6 @@ export default function CheckoutForm({
           </span>
         </button>
       </div>
-
-      {verificationSlot}
 
       <button
         type="submit"
