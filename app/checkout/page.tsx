@@ -16,7 +16,6 @@ import { trackCheckoutStarted, trackPaymentInitiated, trackPaymentFailed, trackC
 const CONFIRMATION_SESSION_KEY = 'nutripanda-order-confirmation'
 const CHECKOUT_ATTEMPT_STORAGE_KEY = 'nutripanda-checkout-attempt'
 const CHECKOUT_ATTEMPT_MAX_AGE_MS = 24 * 60 * 60 * 1000
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 interface CheckoutAttempt {
   key: string
@@ -27,17 +26,6 @@ interface CheckoutAttempt {
 declare global {
   interface Window {
     Razorpay: new (options: RazorpayOptions) => RazorpayInstance
-    turnstile?: {
-      render: (container: HTMLElement, options: {
-        sitekey: string
-        action: string
-        callback: (token: string) => void
-        'expired-callback': () => void
-        'error-callback': () => void
-      }) => string
-      reset: (widgetId?: string) => void
-      remove: (widgetId: string) => void
-    }
   }
 }
 
@@ -155,11 +143,7 @@ export default function CheckoutPage() {
   const [discount, setDiscount] = useState(0)
   const [couponApplied, setCouponApplied] = useState(false)
   const [couponLoading, setCouponLoading] = useState(false)
-  const [turnstileReady, setTurnstileReady] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const checkoutAttempt = useRef<CheckoutAttempt | null>(null)
-  const turnstileContainer = useRef<HTMLDivElement | null>(null)
-  const turnstileWidgetId = useRef<string | null>(null)
 
   useEffect(() => {
     const storedAttempt = readStoredCheckoutAttempt()
@@ -167,26 +151,6 @@ export default function CheckoutPage() {
     checkoutAttempt.current = storedAttempt
     setPaymentMethod(storedAttempt.paymentMethod)
   }, [])
-
-  useEffect(() => {
-    if (!turnstileReady || !TURNSTILE_SITE_KEY || !turnstileContainer.current) return
-    const turnstile = window.turnstile
-    if (!turnstile) return
-
-    if (turnstileWidgetId.current) turnstile.remove(turnstileWidgetId.current)
-    turnstileWidgetId.current = turnstile.render(turnstileContainer.current, {
-      sitekey: TURNSTILE_SITE_KEY,
-      action: 'checkout',
-      callback: (token) => setTurnstileToken(token),
-      'expired-callback': () => setTurnstileToken(null),
-      'error-callback': () => setTurnstileToken(null),
-    })
-
-    return () => {
-      if (turnstileWidgetId.current) turnstile.remove(turnstileWidgetId.current)
-      turnstileWidgetId.current = null
-    }
-  }, [turnstileReady])
 
   // Redirect to products if cart is empty after hydration
   useEffect(() => {
@@ -260,14 +224,6 @@ export default function CheckoutPage() {
   }
 
   async function handleCheckout(formData: CheckoutFormData) {
-    if (!TURNSTILE_SITE_KEY || !turnstileToken) {
-      toast.error(
-        TURNSTILE_SITE_KEY
-          ? 'Complete the checkout security check first.'
-          : 'Checkout security is temporarily unavailable.'
-      )
-      return
-    }
     if (paymentMethod === 'prepaid' && (!razorpayReady || !window.Razorpay)) {
       toast.error('Secure payment is still loading. Please try again in a moment.')
       return
@@ -295,7 +251,6 @@ export default function CheckoutPage() {
           pincode: formData.pincode.trim(),
         },
         couponCode: couponCode || undefined,
-        turnstileToken,
       }
       // Reuse the durable key until the server proves the previous attempt is
       // terminal. Only the opaque key and non-sensitive bookkeeping are kept
@@ -468,8 +423,6 @@ export default function CheckoutPage() {
       rzp.open()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong')
-      if (turnstileWidgetId.current) window.turnstile?.reset(turnstileWidgetId.current)
-      setTurnstileToken(null)
       setIsLoading(false)
     }
   }
@@ -482,13 +435,6 @@ export default function CheckoutPage() {
         onLoad={() => setRazorpayReady(true)}
         onReady={() => setRazorpayReady(true)}
         onError={() => setRazorpayReady(false)}
-      />
-      <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        strategy="afterInteractive"
-        onLoad={() => setTurnstileReady(true)}
-        onReady={() => setTurnstileReady(true)}
-        onError={() => setTurnstileReady(false)}
       />
       <Navbar />
 
@@ -522,16 +468,6 @@ export default function CheckoutPage() {
                 paymentMethod={paymentMethod}
                 onPaymentMethodChange={setPaymentMethod}
                 codFee={codFee}
-                verificationSlot={(
-                  <div className="pt-2">
-                    <div ref={turnstileContainer} className="min-h-[65px]" />
-                    {!TURNSTILE_SITE_KEY && (
-                      <p className="text-sm text-red-600">
-                        Checkout security is not configured. Please contact support.
-                      </p>
-                    )}
-                  </div>
-                )}
               />
             </div>
           </div>

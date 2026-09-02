@@ -24,20 +24,12 @@ import {
   ServiceabilityError,
 } from '@/lib/proship/serviceability'
 import { createOrderAccessToken, hasOrderAccessSecret } from '@/lib/orders/access-token'
-import {
-  checkoutTurnstileToken,
-  TurnstileError,
-  verifyCheckoutTurnstile,
-} from '@/lib/security/turnstile'
 
 export const runtime = 'nodejs'
 
 const MAX_ORDER_TOTAL = 10_000_000
 
 function codFailure(error: unknown) {
-  if (error instanceof TurnstileError) {
-    return NextResponse.json({ error: error.message }, { status: error.status })
-  }
   if (error instanceof CheckoutValidationError) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
@@ -145,11 +137,6 @@ export async function POST(request: Request) {
     }
 
     const clientIp = getClientIp(request)
-    await verifyCheckoutTurnstile({
-      token: checkoutTurnstileToken(rawCheckout),
-      remoteIp: clientIp,
-    })
-
     const [phoneAllowed, ipAllowed] = await Promise.all([
       consumeCheckoutRateLimit({
         scope_key: createRateLimitScope('phone', checkout.customer.phone),

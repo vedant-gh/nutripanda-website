@@ -60,10 +60,6 @@ production.
 - Configure the Netlify scheduled notification worker and provider templates.
 - Set the canonical HTTPS `NEXT_PUBLIC_SITE_URL` and exact
   `ADMIN_DASHBOARD_URL`.
-- Create a Cloudflare Turnstile widget for the checkout domain and set both
-  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`. Set
-  `TURNSTILE_EXPECTED_HOSTNAME=nutripanda.in` in production. New checkouts fail
-  closed when either side is missing or the challenge cannot be verified.
 - For paid prepaid orders, use the dashboard to stop/reconcile the carrier
   first. Only after that succeeds should the exact full Razorpay refund be
   issued and verified; local cancellation then restores inventory once.
