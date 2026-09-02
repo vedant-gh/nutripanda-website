@@ -2,6 +2,15 @@ import 'server-only'
 
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
+import {
+  findDashboardBlogEditorByEmail,
+  findDashboardBlogEditorSessionById,
+  recordDashboardBlogEditorLogin,
+} from '@/lib/supabase/dashboard-blog-editors'
+import {
+  consumeDummyDashboardPasswordCheck,
+  verifyDashboardEditorPassword,
+} from '@/lib/dashboard-auth/editor-password'
 
 const ADMIN_COOKIE_NAME = 'nutripanda_admin_session'
 const SESSION_MAX_AGE = 60 * 60 * 24 // 24 hours
@@ -13,23 +22,20 @@ export interface DashboardUser {
   id: string
   name: string
   role: DashboardRole
+  sessionVersion: number
 }
 
 export interface DashboardSession {
   sub: string
   name: string
   role: DashboardRole
+  ver: number
   exp: number
 }
 
 export type DashboardAuthorization =
   | { authorized: true; session: DashboardSession }
   | { authorized: false; status: 401 | 403; error: 'Unauthorized' | 'Forbidden' }
-
-interface DashboardCredential extends DashboardUser {
-  email?: string
-  password: string
-}
 
 function safeEqual(left: string, right: string): boolean {
   // Hashing first gives timingSafeEqual fixed-size inputs, regardless of the
@@ -43,43 +49,8 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }
 
-function getDashboardCredentials(): DashboardCredential[] {
-  const credentials: DashboardCredential[] = []
-  const adminPassword = process.env.ADMIN_PASSWORD
-
-  if (adminPassword) {
-    credentials.push({
-      id: 'admin',
-      name: 'Administrator',
-      role: 'admin',
-      email: process.env.ADMIN_EMAIL
-        ? normalizeEmail(process.env.ADMIN_EMAIL)
-        : undefined,
-      password: adminPassword,
-    })
-  }
-
-  for (const editorNumber of [1, 2] as const) {
-    const email = process.env[`BLOG_EDITOR_${editorNumber}_EMAIL`]
-    const password = process.env[`BLOG_EDITOR_${editorNumber}_PASSWORD`]
-
-    // An editor account is enabled only when both parts are configured.
-    if (email && password) {
-      credentials.push({
-        id: `blog-editor-${editorNumber}`,
-        name: `Blog Editor ${editorNumber}`,
-        role: 'blog_editor',
-        email: normalizeEmail(email),
-        password,
-      })
-    }
-  }
-
-  return credentials
-}
-
 export function hasDashboardCredentials(): boolean {
-  return getDashboardCredentials().length > 0
+  return Boolean(process.env.ADMIN_PASSWORD)
 }
 
 export function hasDashboardSessionSecret(): boolean {
@@ -90,48 +61,68 @@ export function hasDashboardSessionSecret(): boolean {
  * Match configured dashboard credentials without using ordinary string
  * equality for either the email or password.
  *
- * Password-only login is retained for the original admin login form. It is
- * deliberately never available to editors, and is disabled if an editor was
- * accidentally configured with the same password as the admin.
+ * Password-only login is retained for the original admin login form and is
+ * deliberately never available to editors. Editor creation/reset rejects the
+ * admin email and password so the credentials cannot become ambiguous.
  */
-export function authenticateDashboardCredentials(
+export function dashboardEditorConflictsWithAdminCredentials(
+  email: string,
+  password: string
+): boolean {
+  const adminEmail = process.env.ADMIN_EMAIL
+  const adminPassword = process.env.ADMIN_PASSWORD
+
+  return Boolean(
+    (adminEmail && safeEqual(normalizeEmail(email), normalizeEmail(adminEmail)))
+    || (adminPassword && safeEqual(password, adminPassword))
+  )
+}
+
+export async function authenticateDashboardCredentials(
   email: string | undefined,
   password: string
-): DashboardUser | null {
-  const credentials = getDashboardCredentials()
+): Promise<DashboardUser | null> {
+  const adminPassword = process.env.ADMIN_PASSWORD
+  if (!adminPassword) return null
+
   const normalizedEmail = email ? normalizeEmail(email) : ''
 
   if (!normalizedEmail) {
-    const admin = credentials.find((credential) => credential.role === 'admin')
-    if (!admin) return null
-
-    const passwordIsSharedWithEditor = credentials
-      .filter((credential) => credential.role === 'blog_editor')
-      .some((credential) => safeEqual(password, credential.password))
-
-    if (passwordIsSharedWithEditor || !safeEqual(password, admin.password)) {
-      return null
-    }
-
-    return { id: admin.id, name: admin.name, role: admin.role }
+    return safeEqual(password, adminPassword)
+      ? { id: 'admin', name: 'Administrator', role: 'admin', sessionVersion: 1 }
+      : null
   }
 
-  const matches = credentials.filter((credential) => {
-    // A legacy admin without ADMIN_EMAIL is password-only. Never let arbitrary
-    // supplied emails become aliases for that privileged credential.
-    const emailMatches = Boolean(credential.email)
-      && safeEqual(normalizedEmail, credential.email ?? '')
-    const passwordMatches = safeEqual(password, credential.password)
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (adminEmail && safeEqual(normalizedEmail, normalizeEmail(adminEmail))) {
+    if (safeEqual(password, adminPassword)) {
+      return { id: 'admin', name: 'Administrator', role: 'admin', sessionVersion: 1 }
+    }
+    await consumeDummyDashboardPasswordCheck(password)
+    return null
+  }
 
-    return emailMatches && passwordMatches
+  const editor = await findDashboardBlogEditorByEmail(normalizedEmail)
+  if (!editor) {
+    await consumeDummyDashboardPasswordCheck(password)
+    return null
+  }
+
+  if (!(await verifyDashboardEditorPassword(password, editor.password_hash))) {
+    return null
+  }
+
+  // Login remains valid even if this non-security metadata write fails.
+  await recordDashboardBlogEditorLogin(editor.id).catch((error) => {
+    console.error('Failed to record dashboard editor login:', error)
   })
 
-  // Refuse ambiguous configuration instead of selecting a more privileged
-  // account when two accounts have identical credentials.
-  if (matches.length !== 1) return null
-
-  const match = matches[0]
-  return { id: match.id, name: match.name, role: match.role }
+  return {
+    id: editor.id,
+    name: editor.email,
+    role: 'blog_editor',
+    sessionVersion: editor.session_version,
+  }
 }
 
 function getSessionSecret(): string | null {
@@ -161,6 +152,9 @@ function parseSessionPayload(value: unknown): DashboardSession | null {
     || typeof payload.name !== 'string'
     || !payload.name
     || !isDashboardRole(payload.role)
+    || typeof payload.ver !== 'number'
+    || !Number.isSafeInteger(payload.ver)
+    || payload.ver < 1
     || typeof payload.exp !== 'number'
     || !Number.isSafeInteger(payload.exp)
     || payload.exp <= Math.floor(Date.now() / 1000)
@@ -172,6 +166,7 @@ function parseSessionPayload(value: unknown): DashboardSession | null {
     sub: payload.sub,
     name: payload.name,
     role: payload.role,
+    ver: payload.ver,
     exp: payload.exp,
   }
 }
@@ -191,6 +186,7 @@ export function createDashboardSessionToken(user: DashboardUser): {
     sub: user.id,
     name: user.name,
     role: user.role,
+    ver: user.sessionVersion,
     exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE,
   }
   const encodedPayload = encodePayload(session)
@@ -230,14 +226,19 @@ export async function getDashboardSession(): Promise<DashboardSession | null> {
   const session = token ? verifyDashboardSessionToken(token) : null
   if (!session) return null
 
-  // Re-check that the account still exists in configuration. Removing either
-  // editor variable therefore revokes that editor on the next deployment,
-  // even if they still hold an otherwise valid 24-hour cookie.
-  const accountIsStillConfigured = getDashboardCredentials().some(
-    (credential) => credential.id === session.sub && credential.role === session.role
-  )
+  if (session.role === 'admin') {
+    return session.sub === 'admin' && session.ver === 1 && Boolean(process.env.ADMIN_PASSWORD)
+      ? session
+      : null
+  }
 
-  return accountIsStillConfigured ? session : null
+  try {
+    const editor = await findDashboardBlogEditorSessionById(session.sub)
+    return editor && editor.session_version === session.ver ? session : null
+  } catch (error) {
+    console.error('Dashboard editor session lookup failed:', error)
+    return null
+  }
 }
 
 /**

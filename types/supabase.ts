@@ -22,6 +22,16 @@ export interface Product {
   updated_at: string
 }
 
+export interface DashboardBlogEditor {
+  id: string
+  email: string
+  password_hash: string
+  session_version: number
+  last_login_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Ingredient {
   name: string
   description: string

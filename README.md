@@ -21,7 +21,8 @@ The storefront/API runs at `http://localhost:3002`. The dashboard runs at
 
 Apply every file in `supabase/migrations/` in filename order. Do this before
 deploying the application code: checkout, shipping, notification, dashboard
-rate-limit, customer-login, and refund RPCs depend on those migrations.
+rate-limit, blog-editor access, customer-login, and refund RPCs depend on those
+migrations.
 
 Do not enable `PROSHIP_LIVE_SHIPMENTS` until Proship credentials, pickup data,
 package dimensions, sandbox serviceability, booking, reconciliation, and
@@ -30,9 +31,10 @@ cancellation have all been verified.
 ## Dashboard roles
 
 The existing dashboard deployment supports full `admin` and blog-only
-`blog_editor` sessions. See `DASHBOARD_ACCESS.md` for the exact credential and
-login flow. API authorization in this project is authoritative; sidebar hiding
-alone is never relied on.
+`blog_editor` sessions. The admin manages editor emails and passwords from the
+Blog Access page; editor password hashes and revocation state live in Supabase.
+See `DASHBOARD_ACCESS.md` for the exact flow. API authorization in this project
+is authoritative; sidebar hiding alone is never relied on.
 
 ## Release checks
 
