@@ -36,7 +36,7 @@ export async function OPTIONS(request: Request) {
   return handleCors(request)
 }
 
-// POST — log in as the full admin or one of the two blog editors.
+// POST — log in as the full admin or an admin-managed blog editor.
 export async function POST(request: Request) {
   try {
     const parsed = await readBoundedJsonObject(request, { maxBytes: MAX_LOGIN_BODY_BYTES })
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
     if (!hasDashboardCredentials() || !hasDashboardSessionSecret()) {
       console.error(
-        'Dashboard auth requires at least one configured account and a DASHBOARD_SESSION_SECRET of at least 32 characters'
+        'Dashboard auth requires ADMIN_PASSWORD and a DASHBOARD_SESSION_SECRET of at least 32 characters'
       )
       return withCors(
         noStore(NextResponse.json({ error: 'Server configuration error' }, { status: 500 })),
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       return withCors(noStore(response), request)
     }
 
-    const user = authenticateDashboardCredentials(email as string | undefined, password)
+    const user = await authenticateDashboardCredentials(email as string | undefined, password)
     if (!user) {
       return withCors(
         noStore(NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })),
